@@ -8,3 +8,4 @@
 *.fdb_latexmk
 *.synctex.gz
 30_months.pdf
+*.bundle
