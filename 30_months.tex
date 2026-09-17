@@ -88,9 +88,9 @@ Dr Zhiwu Huang
 
 The following table details the main focus of each chapter of the final thesis.
 Chapters~3--6 correspond to work that is complete and either published or under
-review; Chapters~7 and 8 correspond to the work planned for the remaining
-period and are described in Chapter~3 of this report. A more detailed
-structure, including subsections, follows the table.
+review; Chapter~7 corresponds to work in progress and is described in
+Chapter~3 of this report. A more detailed structure, including subsections,
+follows the table.
 
 \begin{table}[h]
 \centering\small
@@ -103,12 +103,13 @@ Chapter 2 & Literature Review & --\\
 Chapter 3 & Shared Conditional Representation for Text and Motion (MCRE)
           & A joint text--motion condition space admitting linear semantic
             editing directions\\
-Chapter 4 & Hierarchical One-Pass Autoregressive Generation (MOGO)
+Chapter 4 & Hierarchical One-Pass Autoregressive Generation (Hi-RQCT, MOGO)
           & Real-time, infinite-length generation via scale-adaptive residual
             quantization and one-pass causal decoding\\
-Chapter 5 & Constrained Correction in Discrete Latent Space (CodeGeo)
-          & Recasting motion editing as a constrained projection, giving
-            joint- and contact-level exactness\\
+Chapter 5 & Part-Tokenized Motion and Attention-Side Control (PartVQ,
+            KV-Control)
+          & An anatomy-aligned token substrate, and sub-centimetre trajectory
+            control injected into a frozen prior as attention memory\\
 Chapter 6 & Topology-Agnostic Motion Generation (TopX)
           & Generation over arbitrary skeletons without a fixed reference
             topology\\
@@ -136,42 +137,41 @@ Chapter 8 & Conclusion \& Future Work & --\\
   \begin{enumerate}[leftmargin=1.4em]
   \item Text-to-motion: VAEs, tokenization and diffusion
   \item Motion representation and quantization
-  \item Controllable generation, editing and composition
+  \item Spatial control, editing and composition
   \item Skeleton topology, retargeting and transfer
   \item Synopsis of literature
   \end{enumerate}
 
 \item \textbf{Shared Conditional Representation for Text and Motion}\\
-  This chapter addresses the representation gap between symbolic text and
-  continuous motion. A lightweight motion adapter is aligned to a frozen
-  pre-trained text encoder so that both modalities inhabit a single
-  conditional space, in which semantic edits become approximately linear
-  directions. The chapter establishes the conditioning interface reused by
-  every later chapter, and identifies its limitation: control is expressed
-  only at the granularity of a whole sentence.
+  This chapter builds the conditioning interface used throughout the thesis.
+  A lightweight motion adapter is aligned to a frozen pre-trained text encoder
+  so that captions and motions occupy one space, in which semantic edits are
+  displacement vectors and multiple conditions compose by addition. The chapter
+  also establishes the granularity limit that the rest of the thesis removes:
+  a clip-level embedding says what a motion is, not where or when any part of
+  it happens.
 
-\item \textbf{Hierarchical One-Pass Autoregressive Generation}\\
-  This chapter moves from \emph{what to condition on} to \emph{how to decode}.
-  Motion is discretised by a scale-adaptive residual vector quantizer
-  (MoSA-VQ) with cross-level decorrelation, and decoded by a residual-quantized
-  hierarchical causal transformer (RQHC-Transformer) that emits all quantization
-  levels in a single forward pass. The resulting system is real-time, supports
-  unbounded sequence length and accepts prompt switching mid-stream. The
-  chapter also reports the cost of discretisation, which motivates Chapter~5.
+\item \textbf{Hierarchical One-Pass Autoregressive Generation}
+  \begin{enumerate}[leftmargin=1.4em]
+  \item Overview
+  \item Scale-adaptive residual quantization and cross-level decorrelation
+  \item One-pass hierarchical causal decoding
+  \item Infinite-length generation and mid-stream prompt switching
+  \item Results and evaluation
+  \item Conclusion
+  \end{enumerate}
 
-\item \textbf{Constrained Correction in Discrete Latent Space}\\
-  This chapter reframes motion editing as constrained optimisation rather than
-  conditional generation. Given a generated motion and a set of geometric
-  residuals, a correction is computed as a metric-weighted least-norm projection
-  in the quantizer's latent space, which drives the residuals to zero while
-  staying on the learned motion manifold. This gives exact joint- and
-  contact-level control, which conditional generation cannot guarantee.
+\item \textbf{Part-Tokenized Motion and Attention-Side Control}
+  \begin{enumerate}[leftmargin=1.4em]
+  \item Overview
+  \item PartVQ: anatomy-aligned part codebooks
+  \item T-Concat: frame--part tokens as attention-addressable sites
+  \item KV-Control: control-conditioned key/value injection
+  \item Results and evaluation
+  \item Conclusion
+  \end{enumerate}
 
-\item \textbf{Topology-Agnostic Motion Generation}\\
-  This chapter removes the fixed-skeleton assumption shared by Chapters~3--5.
-  \needsinput{one paragraph on the TopX formulation: how the skeleton is
-  encoded, what makes the model topology-agnostic rather than
-  retargeting-based, and which datasets are used}
+\item \textbf{Topology-Agnostic Motion Generation}
   \begin{enumerate}[leftmargin=1.4em]
   \item Overview
   \item Methodology
@@ -202,276 +202,306 @@ Chapter 8 & Conclusion \& Future Work & --\\
 
 \section{Research narrative}
 
-This project asks how a generative model of human motion can be made both
-\emph{precisely controllable} and \emph{general} --- general across the bodies
-it animates and across the instructions it is given. The work to date traces a
-single line: each piece exposed a limit in the previous one, and the limit
-defined the next problem.
+This thesis builds a text-to-motion system that is controllable at the level
+practitioners actually work at --- a named joint, a sketched path, a specific
+interval --- and general enough to survive a change of body or a change of
+task. The work reaches this through a single technical commitment: motion is
+represented as a \emph{part-tokenized substrate}, and control is expressed as
+an operation on that substrate rather than as a stronger condition on a
+generator.
 
-The starting point was the representation gap. Text is symbolic and sparse;
-motion is continuous, high-dimensional and constrained by kinematics. The first
-work (MCRE) closed this gap by training a lightweight motion adapter against a
-frozen pre-trained text encoder~\cite{radford2021learning}, placing captions and
-motions in one conditional space in which semantic edits appear as approximately
-linear directions. This provided the conditioning interface that every
-subsequent piece of work reuses, but it also exposed the first limit: a single
-vector describes a whole clip, so control is available only at the granularity
-of an entire sentence.
+The first work, MCRE~\cite{sun2024mcre}, built the conditioning interface. A
+lightweight motion adapter trained against a frozen text
+encoder~\cite{radford2021learning} places captions and motions in one space, so
+that semantic edits become displacement vectors and conditions compose by
+addition. This is the interface every later chapter inherits. It also fixes the
+granularity of what it can express: one vector per clip, which says what a
+motion is but not where or when any part of it happens.
 
-The second limit was temporal. Diffusion-based text-to-motion
-models~\cite{tevet2022human,chen2023executing,zhang2024motiondiffuse} produce
-high-fidelity clips, but iterative sampling is slow and the clip length is
-fixed at training time, which rules out interactive use. MOGO addressed this by
-discretising motion with a scale-adaptive residual vector
-quantizer~\cite{vandenoord2017neural,zeghidour2022soundstream} and decoding all
-quantization levels in one causal forward pass. The result is real-time,
-unbounded in length, and re-promptable mid-stream. The cost is that motion now
-lives on a finite codebook: quantization error places a floor on achievable
-fidelity, and that floor is not uniform --- it is largest exactly where
-precision matters most, at extremities and at contact.
+The second work made generation fast and unbounded. Diffusion text-to-motion
+models~\cite{tevet2022human,chen2023executing,zhang2024motiondiffuse} sample
+iteratively and train at a fixed horizon, which rules out interactive use.
+Hi-RQCT~\cite{sun2025hirqct} and then MOGO~\cite{sun2025mogo} discretise motion
+with a scale-adaptive residual vector
+quantizer~\cite{vandenoord2017neural,zeghidour2022soundstream} and decode every
+quantization level in a single causal forward pass, giving real-time synthesis,
+unbounded sequence length and mid-stream prompt switching. MOGO was published at
+AAAI 2026. This established the discrete substrate the thesis works on, and
+sharpened the control problem: a token grid is fast, but a flat grid of
+whole-body codes offers nothing to address when a user wants one hand in one
+place.
 
-This observation produced the reframing that organises the current phase of the
-project. Up to this point, every attempt at control had been an attempt to
-\emph{generate} the desired motion by strengthening the condition. But a
-stronger condition buys better \emph{expected} behaviour, never a guarantee: a
-model asked to place a foot at a particular point will place it approximately
-there. The third work (CodeGeo) therefore treats editing not as generation but
-as \emph{projection}. Given a motion and a set of geometric residuals ---
-a joint that must reach a target, a foot that must not slide --- the correction
-is computed as a metric-weighted least-norm step in the quantizer's latent
-space, which satisfies the constraints while remaining on the learned manifold.
-Control granularity drops from the sentence to the individual joint and contact
-event, and it becomes exact rather than approximate.
+The third work is the centre of the thesis. KV-Control~\cite{sun2026kvcontrol}
+makes the substrate addressable and then uses that addressability to control a
+model it never retrains. \textbf{PartVQ} learns anatomy-aligned part codebooks,
+so each token names a body part at a frame instead of a whole pose.
+\textbf{T-Concat} exposes each frame--part token as an attention-addressable
+site. \textbf{KV-Control} then injects control-conditioned key/value memories at
+every self-attention layer of a frozen masked text-to-motion transformer,
+leaving the query stream, the text cross-attention, the feed-forward blocks and
+all backbone weights untouched. Geometric constraints become memory that
+attention can retrieve, rather than a global pose token bolted onto the input or
+a penalty applied at the output. The adapter trains only injection parameters on
+top of a shared trajectory encoder, and tracks root and multi-joint trajectories
+to sub-centimetre accuracy while retaining the text-conditioned motion quality
+of the prior. This is the point at which the thesis delivers precise spatial
+control without the usual price: no duplicated generator branch, no test-time
+optimisation, no degradation of the pretrained prior.
 
-At that point the remaining limits were no longer about precision but about
-generality, and there are two of them. First, all of the above assumes one
-body. HumanML3D~\cite{guo2022generating}, KIT-ML~\cite{plappert2016kitkit} and
-AMASS~\cite{mahmood2019amass} share a single SMPL~\cite{loper2015smpl} skeleton,
-and a model trained on it transfers to a different character only through
-retargeting~\cite{aberman2020skeletonaware}, which presupposes a correspondence
-that may not exist. The fourth work (TopX) removes this assumption, generating
-motion for skeletons of arbitrary structure without a fixed reference topology.
-Second, all of the above assumes one instruction. Real requests are composite
-and ordered --- walk to the table, pick up the cup, turn around --- and
-concatenating independently generated clips produces visible seams and
-inconsistent style~\cite{shafir2024priormdm,barquero2024flowmdm}. The fifth
-work addresses multi-subtask generation directly.
+PartVQ has since become the substrate other work in the group builds on. In
+MoGeFlow~\cite{fang2026mogeflow} the part codebooks are shown to carry
+measurable, decoder-causal kinematic geometry, which licenses generation as a
+continuous flow through codebook space rather than categorical index
+prediction; in AnchorRoute~\cite{fang2026anchorroute} the same addressable
+tokens carry sparse anchors both as generation-time conditioning and as
+residuals that route interval-local refinement. That two further systems are
+built on it is the strongest available evidence that the substrate, not any one
+controller, is the durable contribution.
 
-These two threads define the remaining period. For TopX the question is
-out-of-distribution specialisation: a topology-agnostic model is only
-interesting if it holds up on skeletons genuinely unlike those it was trained
-on, and the current model does not yet. For multi-subtask generation the
-question is how subtask boundaries should be represented so that composition is
-learned rather than stitched. Both are described in Chapter~3.
+Two limits remain, and both are about generality rather than precision. First,
+all of the above assumes one body: HumanML3D~\cite{guo2022generating},
+KIT-ML~\cite{plappert2016kitkit} and AMASS~\cite{mahmood2019amass} share a
+single SMPL~\cite{loper2015smpl} skeleton, and PartVQ's part decomposition is
+defined on it, so transfer to another character runs through
+retargeting~\cite{aberman2020skeletonaware} and its correspondence assumption.
+TopX removes this: the skeleton becomes an input to the model rather than a
+property of the dataset. Second, all of the above executes one instruction.
+Real requests are ordered and composite, and concatenating independently
+generated clips leaves seams and drifting
+style~\cite{shafir2024priormdm,barquero2024flowmdm}. The multi-subtask work
+addresses this directly, and the part-tokenized substrate is what makes it
+tractable: subtask boundaries can be written into a sequence whose tokens are
+already addressable per part and per frame.
 
-One line of work from the 18-month report, MotionDirector, is not carried
-forward as a thesis chapter. It investigated video-prior dual conditioning with
-a cross-modal fusion module and a distribution-alignment objective. The
-experiments were informative --- in particular about how far a conditioning
-signal can be strengthened before returns diminish --- and that negative result
-contributed directly to the reframing described above, but the work relied on
-rendered rather than real video and was judged not to constitute a distinct
-contribution. Its useful components are absorbed into Chapters~3 and 5.
+These two threads define the remaining period and are set out in Chapter~3.
 
 \section{Completed contributions}
 
-\subsection{Shared conditional representation for text and motion (MCRE)}
+\subsection{Shared conditional representation for text and motion}
 
-Text-to-motion models must reconcile two modalities that differ in
-dimensionality, length and structure. Most systems handle this by conditioning
-a generator on a text embedding produced by an encoder that has never seen
-motion, which leaves the two representations only loosely coupled and makes
-any operation other than one-shot generation --- editing, interpolation,
-composition --- difficult to express.
+Text-to-motion models must reconcile modalities that differ in dimensionality,
+length and structure. The standard approach conditions a generator on an
+embedding from an encoder that has never seen motion, which couples the two
+representations loosely and makes anything other than one-shot generation ---
+editing, interpolation, composition --- awkward to express.
 
 This work trained a lightweight motion adapter against a frozen pre-trained
-text encoder, so that a motion and its caption map to nearby points in a single
-conditional space. Because the space is shared and the alignment objective is
-contrastive, semantic relationships between captions carry over to motions:
-edits such as changing the speed, the direction or the affect of a movement can
-be applied as displacement vectors in the conditional space rather than by
-re-prompting the generator, and multiple conditions can be combined by
+text encoder, mapping a motion and its caption to nearby points in one
+conditional space. Because the space is shared and the objective is
+contrastive, semantic relationships between captions transfer to motions:
+changing the speed, direction or affect of a movement is a displacement in the
+conditional space rather than a new prompt, and several conditions combine by
 composition in the same space.
 
-The contribution is less a competitive generator than an interface. It
-established the conditioning mechanism reused throughout the thesis, and it
-made the granularity problem explicit: a clip-level embedding can express
-\emph{what} a motion is, but not \emph{where} or \emph{when} any part of it
-should happen. That observation motivates the later chapters.
+The result is the conditioning interface reused by every subsequent chapter,
+and a precise statement of what clip-level conditioning cannot do. That
+statement sets the agenda for Chapters~4 and 5.
 
-This work was published at the ECCV 2024 Workshop on Foundation Models for
-3D Humans~\cite{sun2024mcre}.
+Published at the ECCV 2024 Workshop on Foundation Models for 3D
+Humans~\cite{sun2024mcre}.
 
-\subsection{Hierarchical one-pass autoregressive generation (MOGO)}
+\subsection{Hierarchical one-pass autoregressive generation}
 
-Diffusion-based motion models set a high bar for fidelity and diversity, but
-their iterative sampling makes them unsuitable for interactive use, and their
-fixed-horizon training makes long-form generation awkward. Tokenization-based
-models~\cite{chuan2022tm2t,guo2024momask} decode faster, but residual
-quantization schemes typically require one decoding pass per quantization
-level, and error accumulates over long autoregressive rollouts.
+Tokenization-based motion models~\cite{chuan2022tm2t,guo2024momask} decode
+faster than diffusion, but residual quantization schemes generally require one
+decoding pass per quantization level, and error accumulates over long
+autoregressive rollouts.
 
-This work introduced two components. MoSA-VQ is a residual vector quantizer
+This work contributed two components. MoSA-VQ is a residual vector quantizer
 with learnable per-level scaling and a cross-level decorrelation objective; the
 decorrelation term minimises the batch-wise covariance between a quantized
-vector and the residual passed to the next level, which enforces approximate
-statistical orthogonality across the hierarchy so that each level encodes
-information the previous levels did not. This improves codebook utilisation and
-yields more compact codes under a fixed budget. The RQHC-Transformer is a
-causal decoder whose structure mirrors the quantization hierarchy and which
-emits all levels in a single forward pass, removing the per-level decoding cost
-while preserving temporal coherence.
+vector and the residual passed to the next level, enforcing approximate
+statistical orthogonality across the hierarchy so each level encodes what the
+previous levels did not. This improves codebook utilisation and yields more
+compact codes under a fixed budget. The RQHC-Transformer is a causal decoder
+whose structure mirrors the quantization hierarchy and which emits all levels in
+one forward pass, removing per-level decoding cost while preserving temporal
+coherence.
 
-Together these give near real-time decoding and generation of unbounded length,
-with the ability to inject a new text prompt at an arbitrary point in the
-sequence --- the property that makes the system usable for avatar control and
-teleoperation rather than offline clip synthesis. A textual condition alignment
-module normalises free-form user input into structured instructions before
-generation, which improves robustness on prompts unlike those seen in training.
+Together these give near real-time decoding, generation of unbounded length,
+and injection of a new text prompt at an arbitrary point in the sequence --- the
+property that makes the system usable for avatar control and teleoperation
+rather than offline clip synthesis. A textual condition alignment module
+normalises free-form input into structured instructions before generation,
+improving robustness on prompts unlike those seen in training.
 
-Ablations confirmed both components: removing the decorrelation objective
-degraded generation FID and retrieval accuracy consistently across metrics, and
-codebook capacity showed that the configuration minimising reconstruction error
-is not the one maximising generation quality --- a gap that is itself evidence
-that quantization error is structured rather than uniform noise, and which
-motivated the next work.
+Ablations confirmed both components. Removing the decorrelation objective
+degraded generation FID and retrieval accuracy consistently across metrics.
+Varying codebook capacity showed that the configuration minimising
+reconstruction error is not the one maximising generation quality, which
+established that quantization error here is structured rather than uniform
+noise --- the observation that motivated moving to an anatomy-aligned
+decomposition in the next work.
 
-An earlier form of the decoder was published at CVMP 2025 as
-Hi-RQCT~\cite{sun2025hirqct}; the full system was published at AAAI
-2026~\cite{sun2025mogo}.
+The decoder was published at CVMP 2025 as Hi-RQCT~\cite{sun2025hirqct}; the full
+system was published at AAAI 2026 as MOGO~\cite{sun2025mogo}.
 
-\subsection{Constrained correction in discrete latent space (CodeGeo)}
+\subsection{Part-tokenized motion and attention-side control}
 
-Both of the preceding works control motion by conditioning: the model is told
-what is wanted and produces something close to it. For a large class of
-practical requirements this is not enough. A foot that must remain planted, a
-hand that must reach a specific point, a trajectory that must pass through a
-waypoint --- these are constraints, and a conditional model satisfies them only
-in expectation. Increasing guidance strength trades one failure for another,
-tightening the constraint at the cost of diversity and, past a point, of
-plausibility.
+Text-conditioned models synthesise plausible motion from prompts, but animation
+and embodied-agent workflows do not stop at text: a character must follow a
+sketched root path, reach an end-effector target, or satisfy a multi-joint
+trajectory while keeping the gait and intent the language described. Existing
+trajectory controllers pay for this either by duplicating large parts of the
+generator to regain per-layer access, or by pushing the cost to test-time
+optimisation.
 
-This work reframes the problem. A generated motion is treated as a point in the
-quantizer's latent space, and each requirement is written as a geometric
-residual that should be driven to zero. The correction is then the least-norm
-step, under a metric derived from the learned representation, that eliminates
-the residual to first order --- a damped, metric-weighted projection of the
-form
-\[
-  \Delta \;=\; -\,\mathbf{M}\mathbf{J}^{\top}
-  \bigl(\mathbf{J}\mathbf{M}\mathbf{J}^{\top}+\lambda\mathbf{I}\bigr)^{-1}\mathbf{r},
-\]
-where $\mathbf{J}$ is the Jacobian of the residual with respect to the latent,
-$\mathbf{M}$ is the metric and $\lambda$ damps the solution near singular
-configurations. Choosing $\mathbf{M}$ from the statistics of the learned
-codebook rather than as the identity is what keeps the correction on the motion
-manifold: the step is cheapest in the directions the data actually varies
-along, so the edit borrows from the model's prior instead of fighting it.
+This work provides a compact attention-side control interface for frozen masked
+text-to-motion transformers, built on three components:
 
-The practical consequences are that constraints are satisfied exactly rather
-than approximately; that the edit is local, leaving unconstrained parts of the
-motion untouched; and that the procedure is applied after generation, so it
-composes with any generator that exposes a latent space --- including MOGO.
-This is the point at which control in the thesis becomes exact rather than
-statistical, and it completes the discrete-representation line of work.
+\begin{itemize}
+\item \textbf{PartVQ} learns anatomy-aligned part codebooks, so a token denotes
+  a body part at a frame rather than a whole pose. This is what makes the
+  token grid addressable at the granularity control actually needs.
+\item \textbf{T-Concat} exposes each frame--part token as a site that attention
+  can address directly.
+\item \textbf{KV-Control} injects control-conditioned key/value memories at
+  every self-attention layer, while preserving the pretrained query stream, the
+  text cross-attention, the feed-forward blocks and all backbone weights. Only
+  injection parameters on top of a shared trajectory encoder are trained.
+\end{itemize}
 
-This work is currently under review at AAAI.
-\needsinput{confirm the submission target and round, and whether the earlier
-KV-control naming should be mentioned anywhere}
+The reframing is that geometric constraints are made available \emph{as memory
+inside self-attention} rather than delivered through a global pose token or
+enforced at the output. Trajectory conditioning becomes lightweight memory
+retrieval. The resulting adapter tracks root and multi-joint constraints to
+sub-centimetre accuracy under the inherited refinement protocol while retaining
+the text-conditioned motion quality of the frozen prior, and it is small,
+precise and inspectable --- the control path is a named set of injected
+memories rather than a re-trained generator.
 
-\subsection{Topology-agnostic motion generation (TopX)}
+The paper is under review at AAAI.
+\needsinput{confirm the current title under which this was submitted, since the
+report refers to it as KV-Control throughout}
 
-Every model described so far is trained on a single skeleton. The standard
-benchmarks all derive from SMPL~\cite{loper2015smpl}, and a model that has
-learned motion on that skeleton can animate a different character only by
+\subsection{Topology-agnostic motion generation}
+
+Every model above is trained on one skeleton. The standard benchmarks derive
+from SMPL~\cite{loper2015smpl}, and PartVQ's anatomical decomposition is defined
+against it, so animating a structurally different character runs through
 retargeting~\cite{aberman2020skeletonaware}, which assumes a joint
-correspondence between source and target. For characters whose morphology
-differs substantially --- different limb counts, different proportions,
-non-humanoid structure --- that correspondence does not exist, and the
-assumption fails silently rather than visibly.
+correspondence between source and target. For morphologies with different limb
+counts, proportions or non-humanoid structure, that correspondence does not
+exist and the assumption fails silently.
 
-This work generates motion for skeletons of arbitrary topology without a fixed
-reference structure, so that the skeleton is an input to the model rather than
-a property of the dataset.
-\needsinput{the methodology: how the skeleton is encoded and consumed by the
-model, what the training corpus is, and what distinguishes TopX from
+TopX generates motion for skeletons of arbitrary topology with no fixed
+reference structure: the skeleton is an input to the model rather than a
+property of the dataset.
+\needsinput{the methodology --- how the skeleton is encoded and consumed, what
+the training corpus is, and what separates TopX from
 AnyTop~\cite{gilles2024anytop} and from retargeting-based approaches}
 
-\needsinput{the main quantitative result, and the comparison that best
-demonstrates topology-agnosticism --- ideally performance on a skeleton class
-held out from training}
+\needsinput{the headline quantitative result, ideally performance on a skeleton
+class held out from training}
 
-The paper is complete and is being submitted to ICLR 2027. The remaining
-question, which forms the first thread of planned work, is behaviour on
-skeletons genuinely outside the training distribution; this is described in
-Section~3.1.
+The paper is complete and in submission to ICLR 2027. Behaviour on skeletons
+outside the training distribution is the subject of Section~3.1.
+
+\subsection{Contributing-author work}
+
+Three further motion systems were developed with colleagues in the group, each
+building on components contributed here.
+
+\begin{itemize}
+\item \textbf{MotionDuet}~\cite{zhang2026motionduet}, published at CVPR 2026,
+  aligns motion generation with the distribution of video-derived
+  representations. Video cues from a pretrained model ground low-level dynamics
+  while text supplies semantic intent; DUET fuses video-informed cues into the
+  motion latent space, a DASH loss aligns generated trajectories with the
+  distributional and structural statistics of video features, and an
+  auto-guidance mechanism balances the two conditions using a weakened copy of
+  the model. My contribution was to the dual-conditioning design and the
+  training and evaluation of the fused model.
+
+\item \textbf{MoGeFlow}~\cite{fang2026mogeflow} shows that PartVQ's
+  group-specific codes carry measurable, non-random and decoder-causal
+  kinematic geometry, and generates by learning a text-conditioned continuous
+  flow over code embeddings rather than predicting categorical indices. It sets
+  state of the art in R-Precision on HumanML3D and KIT-ML. My contribution was
+  the PartVQ substrate it is built on and the codebook-geometry diagnostics.
+
+\item \textbf{AnchorRoute}~\cite{fang2026anchorroute} uses sparse anchors as a
+  single scaffold for both generation and refinement: anchors are injected into
+  a frozen masked diffusion prior as condition memory, and the same anchors are
+  then read as residuals whose timestamps define refinement intervals. My
+  contribution was the attention-side injection mechanism carried over from
+  KV-Control.
+
+\item \textbf{UMO}~\cite{zhan2026umo} addresses unified sparse motion modelling
+  for real-time co-speech avatars, to which I contributed on the sparse motion
+  representation.
+\end{itemize}
 
 \section{Publications}
 
 \begin{itemize}
 \item \textbf{ECCV 2024 Workshop} --- \emph{MCRE: Multimodal Conditional
-  Representation and Editing for Text-Motion Generation}. Established the joint
-  text--motion conditional space used as the conditioning interface throughout
-  the thesis, and identified clip-level granularity as its limit.
+  Representation and Editing for Text-Motion Generation}. First author.
+  Established the joint text--motion conditional space used throughout the
+  thesis.
 
 \item \textbf{CVMP 2025} --- \emph{Hi-RQCT: Hierarchical Residual-Quantized
-  Causal Transformer for High-Quality 3D Human Motion Generation}. Introduced
-  the hierarchical causal decoder later extended into MOGO.
+  Causal Transformer for High-Quality 3D Human Motion Generation}. Joint first
+  author. The hierarchical causal decoder later extended into MOGO.
 
 \item \textbf{AAAI 2026} --- \emph{MOGO: Residual Quantized Hierarchical Causal
   Transformer for Real-Time and Infinite-Length 3D Human Motion Generation}.
-  The full discrete-route system: real-time decoding, unbounded length and
-  mid-stream prompt switching.
+  Joint first author. Real-time decoding, unbounded length and mid-stream
+  prompt switching.
 
-\item \textbf{AAAI, under review} --- \emph{CodeGeo}. Recast motion editing as
-  constrained projection in the quantizer's latent space, moving control from
-  clip-level and approximate to joint-level and exact.
+\item \textbf{CVPR 2026} --- \emph{MotionDuet: Dual-Conditioned 3D Human Motion
+  Generation with Video-Regularized Text Learning}. Second author.
 
-\item \textbf{ICLR 2027, in submission} --- \emph{TopX}. Removed the
-  fixed-skeleton assumption, generating motion over arbitrary topologies.
+\item \textbf{AAAI, under review} --- \emph{KV-Control: Parameter-Efficient K/V
+  Injection for Trajectory-Controlled Text-to-Motion}. First author. PartVQ,
+  T-Concat and attention-side control injection.
+
+\item \textbf{ICLR 2027, in submission} --- \emph{TopX}. First author.
+  Generation over arbitrary skeleton topologies.
+
+\item \textbf{Contributing author, 2026} ---
+  \emph{MoGeFlow}~\cite{fang2026mogeflow},
+  \emph{AnchorRoute}~\cite{fang2026anchorroute} and
+  \emph{UMO}~\cite{zhan2026umo}.
 \end{itemize}
 
 % =================================================================
 \chapter{Plan of Unfinished Work}
 
-Two threads remain, and they address the two generality limits identified at
-the end of Section~2.1: the model's dependence on a single body, and its
-dependence on a single instruction.
+Two threads remain, addressing the two generality limits identified at the end
+of Section~2.1: dependence on a single body, and dependence on a single
+instruction.
 
 \section{Out-of-distribution specialisation for topology-agnostic generation}
 
 \workitem{%
-TopX removed the fixed-skeleton assumption, but a topology-agnostic model
-earns that description only if it holds up on skeletons genuinely unlike its
-training data. This work turns the architectural claim of Chapter~6 into a
-measured one, and is the natural completion of that chapter.}{%
+TopX makes the skeleton an input rather than a dataset property. This work
+establishes what that buys on skeletons far from the training distribution, and
+how cheaply the model can be specialised to a new one. It completes Chapter~6.}{%
 To characterise and then reduce the degradation of topology-agnostic generation
 under out-of-distribution skeletons --- morphologies, limb counts and
 proportions absent from training --- and to determine how much target-domain
 data is needed to specialise the model to a new topology.}{%
-Degradation under an unseen skeleton is not uniform failure but the collapse of
-specific transferable structure. The hypothesis is that a topology-agnostic
-model learns two separable things: motion dynamics, which transfer across
-morphology, and a structural prior over skeletons, which does not. If this
-holds, then out-of-distribution failure is concentrated in the structural
-component, it should be visible in the model's internal representations before
-it is visible in output quality, and specialisation to a new topology should be
-achievable with a small amount of target data by adapting only that component
---- with generative replay from the base model used to prevent the adaptation
-from erasing the dynamics.}{%
+A topology-agnostic model learns two separable things: motion dynamics, which
+transfer across morphology, and a structural prior over skeletons, which does
+not. Out-of-distribution failure is therefore concentrated in the structural
+component, is visible in internal representations before it is visible in output
+quality, and can be repaired with a small amount of target data by adapting only
+that component --- with generative replay from the base model preventing the
+adaptation from erasing the dynamics.}{%
 \begin{enumerate}
-\item Construct an out-of-distribution evaluation protocol: define held-out
-  skeleton classes with controlled distance from the training distribution, and
-  report generation quality as a function of that distance rather than as a
-  single aggregate number~\cite{hendrycks2021ood}.
-\item Diagnose where degradation originates by separating dynamics and
-  structural components in the representation, and test whether the failure is
-  predictable from internal representations ahead of output quality.
-\item Develop the specialisation procedure: parameter-efficient adaptation of
-  the structural component with generative replay, and measure the data--quality
+\item Build an out-of-distribution evaluation protocol: held-out skeleton
+  classes at controlled distance from the training distribution, with quality
+  reported as a function of that distance rather than as one aggregate
+  number~\cite{hendrycks2021ood}.
+\item Locate the degradation by separating dynamics and structural components
+  in the representation, and test whether failure is predictable from internal
+  representations ahead of output quality.
+\item Build the specialisation procedure: parameter-efficient adaptation of the
+  structural component with generative replay, and measure the data--quality
   trade-off curve for a new topology.
-\item Evaluate against retargeting-based baselines~\cite{aberman2020skeletonaware}
-  and against AnyTop~\cite{gilles2024anytop} on the held-out skeleton classes.
+\item Evaluate against retargeting baselines~\cite{aberman2020skeletonaware} and
+  AnyTop~\cite{gilles2024anytop} on the held-out classes.
   \needsinput{which OOD skeleton sets are available, and whether a non-humanoid
   corpus is in hand}
 \end{enumerate}}
@@ -479,37 +509,36 @@ from erasing the dynamics.}{%
 \section{Multi-subtask motion generation}
 
 \workitem{%
-Every model in the thesis so far executes a single instruction. This work
-extends the conditioning interface established in Chapter~3 to ordered,
-composite instructions, and is the last piece needed for the thesis claim of
-controllable \emph{and} general generation.}{%
-To generate long-horizon motion from an ordered set of subtasks, such that
+Every model in the thesis executes a single instruction. This work extends the
+conditioning interface of Chapter~3 to ordered, composite instructions, and is
+the last piece required for the thesis claim of control that is both precise and
+general.}{%
+To generate long-horizon motion from an ordered set of subtasks such that
 transitions are generated rather than stitched, style and identity persist
-across subtask boundaries, and the per-joint and contact-level control of
-Chapter~5 remains available within any individual subtask.}{%
+across subtask boundaries, and the per-part control of Chapter~5 remains
+available within any individual subtask.}{%
 Existing approaches treat composition as a post-hoc problem: clips are generated
-independently and then blended~\cite{shafir2024priormdm,barquero2024flowmdm}, so
-transitions are a smoothing artefact rather than something the model has
-learned. The hypothesis is that if subtask boundaries are represented explicitly
-in the sequence the model decodes --- rather than imposed on it afterwards ---
-the transition becomes part of the modelled distribution, and both boundary
-quality and global style consistency improve over blending. MOGO's causal,
-re-promptable decoder is the natural substrate for this, since it already
-accepts a condition change mid-sequence.}{%
+independently and blended~\cite{shafir2024priormdm,barquero2024flowmdm}, so the
+transition is a smoothing artefact rather than something the model has learned.
+Writing subtask boundaries into the sequence the model decodes makes the
+transition part of the modelled distribution, improving both boundary quality
+and global style consistency over blending. The part-tokenized substrate of
+Chapter~5 is what makes this practical: tokens are already addressable per part
+and per frame, so a boundary can be expressed without leaving the
+representation, and MOGO's causal decoder already accepts a condition change
+mid-sequence.}{%
 \begin{enumerate}
-\item Fix the subtask representation: how a subtask boundary is encoded, and
-  whether the ordering is supplied as a hard schedule or inferred.
-  \needsinput{the current design, and which of these two the model presently
-  assumes}
-\item Assemble training data with subtask annotations, either from existing
-  compositional corpora~\cite{lee2023multiact,zhang2023finemogen} or by
-  segmenting long sequences.
-  \needsinput{the dataset actually being used}
-\item Train the compositional decoder on top of the MOGO backbone and verify
-  that per-subtask controllability is preserved.
+\item Fix the subtask representation: how a boundary is encoded, and whether
+  ordering is supplied as a hard schedule or inferred.
+  \needsinput{the current design, and which of the two the model assumes}
+\item Assemble training data with subtask annotations, from compositional
+  corpora~\cite{lee2023multiact,zhang2023finemogen} or by segmenting long
+  sequences. \needsinput{the dataset in use}
+\item Train the compositional decoder on the part-tokenized backbone and verify
+  that per-part controllability survives composition.
 \item Evaluate transition quality, long-horizon drift and style consistency
-  against blending-based composition baselines, and confirm that CodeGeo
-  corrections still apply within a subtask.
+  against blending-based baselines, and confirm that KV-Control injection still
+  applies within a subtask.
 \end{enumerate}}
 
 \section{Timeline}
@@ -541,7 +570,7 @@ accepts a condition change mid-sequence.}{%
 \ganttbar{OOD evaluation protocol}{1}{3}\\
 \ganttbar{Degradation diagnosis}{3}{5}\\
 \ganttbar{Specialisation + replay}{4}{7}\\
-\ganttmilestone{ICLR camera-ready / resubmission}{5}\\
+\ganttmilestone{ICLR decision / resubmission}{5}\\
 
 \ganttgroup{Multi-subtask}{1}{9}\\
 \ganttbar{Subtask representation \& data}{1}{3}\\
@@ -562,14 +591,13 @@ Months are shown along the top.}
 \label{fig:gantt}
 \end{figure}
 
-Writing of the chapters derived from completed papers (Chapters~3--5) can begin
-as soon as the TopX submission is settled, since that material already exists in
-publication form and requires reorganisation rather than new writing. On this
-plan the thesis is submitted in September 2027. An earlier submission in
-March--June 2027 is achievable if the multi-subtask work is dropped to a single
-conference submission rather than developed to journal depth; the September date
-is preferred because it allows the multi-subtask chapter to be written from an
-accepted paper rather than one under review.
+Chapters~3--5 derive from published or submitted papers and require
+reorganisation rather than new writing, so drafting can begin as soon as the
+TopX submission is settled. On this plan the thesis is submitted in September
+2027. Submission in March--June 2027 is achievable if the multi-subtask work is
+taken to a single conference submission rather than developed further; the
+September date is preferred because it allows that chapter to be written from an
+accepted paper.
 
 \section{Publication plan}
 
@@ -581,7 +609,7 @@ accepted paper rather than one under review.
 \midrule
 September 2026 & TopX --- ICLR 2027 submission (in progress)\\
 November 2026  & Multi-subtask --- CVPR 2027 submission (optimistic)\\
-January 2027   & CodeGeo decision; camera-ready or resubmission\\
+January 2027   & KV-Control decision; camera-ready or resubmission\\
 March 2027     & Multi-subtask --- ICCV 2027 submission (realistic)\\
 March 2027     & TopX OOD extension --- ICCV 2027 or journal submission\\
 May 2027       & Multi-subtask --- NeurIPS 2027 submission (fallback)\\
@@ -595,17 +623,18 @@ September 2027 & Thesis submission\\
 \end{table}
 
 \begin{itemize}
-\item \textbf{MCRE:} published at the ECCV 2024 Workshop on Foundation Models
-  for 3D Humans.
-\item \textbf{Hi-RQCT:} published at CVMP 2025.
-\item \textbf{MOGO:} published at AAAI 2026.
-\item \textbf{CodeGeo:} under review at AAAI; fallback submission to CVPR 2027
-  if not accepted.
+\item \textbf{MCRE:} published, ECCV 2024 Workshop on Foundation Models for
+  3D Humans.
+\item \textbf{Hi-RQCT:} published, CVMP 2025.
+\item \textbf{MOGO:} published, AAAI 2026.
+\item \textbf{MotionDuet:} published, CVPR 2026.
+\item \textbf{KV-Control:} under review at AAAI; fallback submission to CVPR
+  2027.
 \item \textbf{TopX:} in submission to ICLR 2027; the out-of-distribution
-  specialisation work is planned as a follow-up submission to ICCV 2027 or as a
-  journal extension.
-\item \textbf{Multi-subtask motion generation:} planned for CVPR 2027, with
-  ICCV 2027 as the realistic target and NeurIPS 2027 as a fallback.
+  specialisation work follows as an ICCV 2027 submission or a journal
+  extension.
+\item \textbf{Multi-subtask motion generation:} CVPR 2027 optimistic, ICCV 2027
+  realistic, NeurIPS 2027 fallback.
 \end{itemize}
 
 % =================================================================
