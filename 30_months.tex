@@ -106,13 +106,15 @@ Chapter 3 & Shared Conditional Representation for Text and Motion (MCRE)
 Chapter 4 & Hierarchical One-Pass Autoregressive Generation (Hi-RQCT, MOGO)
           & Real-time, infinite-length generation via scale-adaptive residual
             quantization and one-pass causal decoding\\
-Chapter 5 & Part-Tokenized Motion and Attention-Side Control (PartVQ,
-            KV-Control)
-          & An anatomy-aligned token substrate, and sub-centimetre trajectory
-            control injected into a frozen prior as attention memory\\
-Chapter 6 & Topology-Agnostic Motion Generation (TopX)
-          & Generation over arbitrary skeletons without a fixed reference
-            topology\\
+Chapter 5 & Part-Addressable Control and Codebook-Geometry Correction
+            (PartVQ, KV-Control, CodeGeo)
+          & Trajectory control injected into a frozen prior as attention
+            memory, finished in at most eight analytic steps in the codebook's
+            own geometry\\
+Chapter 6 & Skeleton-Aware Text-to-Motion across Heterogeneous Topologies
+            (TopX)
+          & One model serving 311 production rigs, with the skeleton as a
+            prompt and zero- and few-shot transfer to unseen rigs\\
 Chapter 7 & Multi-Subtask Motion Generation & [TBD]\\
 Chapter 8 & Conclusion \& Future Work & --\\
 \bottomrule
@@ -161,21 +163,26 @@ Chapter 8 & Conclusion \& Future Work & --\\
   \item Conclusion
   \end{enumerate}
 
-\item \textbf{Part-Tokenized Motion and Attention-Side Control}
+\item \textbf{Part-Addressable Control and Codebook-Geometry Correction}
   \begin{enumerate}[leftmargin=1.4em]
   \item Overview
   \item PartVQ: anatomy-aligned part codebooks
   \item T-Concat: frame--part tokens as attention-addressable sites
   \item KV-Control: control-conditioned key/value injection
+  \item CodeGeo: codebook-geometry correction
+  \item Matching the step metric to the anchor spread
   \item Results and evaluation
   \item Conclusion
   \end{enumerate}
 
-\item \textbf{Topology-Agnostic Motion Generation}
+\item \textbf{Skeleton-Aware Text-to-Motion across Heterogeneous Topologies}
   \begin{enumerate}[leftmargin=1.4em]
   \item Overview
-  \item Methodology
+  \item TopX-17: a per-joint representation for any rig
+  \item In-context skeleton conditioning
+  \item Grouped flow matching
   \item Results and evaluation
+  \item Zero- and few-shot extension to unseen rigs
   \item Out-of-distribution specialisation
   \item Conclusion
   \end{enumerate}
@@ -231,49 +238,68 @@ sharpened the control problem: a token grid is fast, but a flat grid of
 whole-body codes offers nothing to address when a user wants one hand in one
 place.
 
-The third work is the centre of the thesis. KV-Control~\cite{sun2026kvcontrol}
-makes the substrate addressable and then uses that addressability to control a
-model it never retrains. \textbf{PartVQ} learns anatomy-aligned part codebooks,
-so each token names a body part at a frame instead of a whole pose.
-\textbf{T-Concat} exposes each frame--part token as an attention-addressable
-site. \textbf{KV-Control} then injects control-conditioned key/value memories at
-every self-attention layer of a frozen masked text-to-motion transformer,
-leaving the query stream, the text cross-attention, the feed-forward blocks and
-all backbone weights untouched. Geometric constraints become memory that
-attention can retrieve, rather than a global pose token bolted onto the input or
-a penalty applied at the output. The adapter trains only injection parameters on
-top of a shared trajectory encoder, and tracks root and multi-joint trajectories
-to sub-centimetre accuracy while retaining the text-conditioned motion quality
-of the prior. This is the point at which the thesis delivers precise spatial
-control without the usual price: no duplicated generator branch, no test-time
-optimisation, no degradation of the pretrained prior.
+The third work is the centre of the thesis, and it answers that problem with
+one representation used twice. \textbf{PartVQ} learns one codebook per
+anatomical part ($Q=6$, with the partition derived from data), so a token names
+both a moment in time and a part of the body. \textbf{T-Concat} unpacks the part
+codebooks along the sequence axis, giving every (frame, part) pair its own
+attention slot. \textbf{KV-Control}~\cite{sun2026codegeo} then feeds a target
+trajectory into a frozen masked transformer as extra key/value memory at every
+self-attention layer: 10.5M trainable parameters, with the query stream, the text
+cross-attention and every backbone weight untouched. The same codebooks also
+record which changes the decoder was trained to absorb, so they define a
+geometry in which a correction can be measured. \textbf{CodeGeo} moves the
+generated clip onto the commanded path by the smallest change that geometry
+allows, in at most eight damped analytic steps in place of the 1,600-iteration
+refinement used by prior controllers. The anisotropy of that step metric is not
+a free parameter: it must match how far the commanded anchors spread across the
+body, and joints confined to one part and joints spread over the whole body
+prefer opposite settings. On pelvis control the method tracks to 0.24\,cm at FID
+0.067 in 1/21 of the per-sample time; on multi-joint control it reaches 0.25\,cm
+at FID 0.072, against MaskControl's 0.72\,cm and 0.083~\cite{pinyoanuntapong2025maskcontrol}.
+The result that matters most for the thesis is an ablation: the same control
+interface on a channel-stacked trunk of matched quality tracks with 2.2 times
+the error. Control accuracy is a property of the representation, not of the
+injection alone.
 
 PartVQ has since become the substrate other work in the group builds on. In
 MoGeFlow~\cite{fang2026mogeflow} the part codebooks are shown to carry
 measurable, decoder-causal kinematic geometry, which licenses generation as a
-continuous flow through codebook space rather than categorical index
-prediction; in AnchorRoute~\cite{fang2026anchorroute} the same addressable
-tokens carry sparse anchors both as generation-time conditioning and as
-residuals that route interval-local refinement. That two further systems are
-built on it is the strongest available evidence that the substrate, not any one
-controller, is the durable contribution.
+continuous flow through codebook space rather than categorical index prediction;
+in AnchorRoute~\cite{fang2026anchorroute} the same addressable tokens carry
+sparse anchors both as generation-time conditioning and as residuals that route
+interval-local refinement.
 
-Two limits remain, and both are about generality rather than precision. First,
-all of the above assumes one body: HumanML3D~\cite{guo2022generating},
-KIT-ML~\cite{plappert2016kitkit} and AMASS~\cite{mahmood2019amass} share a
-single SMPL~\cite{loper2015smpl} skeleton, and PartVQ's part decomposition is
-defined on it, so transfer to another character runs through
-retargeting~\cite{aberman2020skeletonaware} and its correspondence assumption.
-TopX removes this: the skeleton becomes an input to the model rather than a
-property of the dataset. Second, all of the above executes one instruction.
-Real requests are ordered and composite, and concatenating independently
-generated clips leaves seams and drifting
-style~\cite{shafir2024priormdm,barquero2024flowmdm}. The multi-subtask work
-addresses this directly, and the part-tokenized substrate is what makes it
-tractable: subtask boundaries can be written into a sequence whose tokens are
-already addressable per part and per frame.
+That ablation also exposes the substrate's boundary. PartVQ's partition is
+learned, but the body it partitions is fixed: HumanML3D~\cite{guo2022generating},
+KIT-ML~\cite{plappert2016kitkit} and AMASS~\cite{mahmood2019amass} share one
+SMPL~\cite{loper2015smpl} skeleton, and every codebook is learned for that
+morphology. Games, film and virtual production are populated by characters that
+are not human, and a studio has hundreds of rigs, each with its own joint count,
+naming and helper bones. The fourth work, TopX~\cite{sun2026topx}, carries the
+addressable-token idea from one body to any body. Its token is one joint at one
+frame rather than one part at one frame; \textbf{TopX-17} converts any rigged
+animation from its kinematic tree, rest pose and motion alone, and standardises
+every (rig, joint, channel) cell by its own statistics, so that rigs of very
+different proportions share one network input with no template, retargeting or
+inverse kinematics. The skeleton enters as a prompt --- the rig's rest pose
+leads the sequence as a clean frame and tree distances bias spatial attention
+--- so nothing in the network is indexed by rig. This is the same principle as
+KV-Control, applied to a different condition: in both, what the model must obey
+is made addressable inside attention rather than baked into the architecture.
+One 0.3B-parameter flow-matching transformer serves 311 animal rigs of 34 to 102
+joints, reaching R@1 0.867 against 0.904 for real clips and FID 0.005, and an
+unseen rig is served by the same forward pass.
 
-These two threads define the remaining period and are set out in Chapter~3.
+Two limits remain. First, TopX serves rigs outside its library zero-shot, but
+bodies far from it --- a winged dragon, a many-legged spider --- still need a
+per-rig adapter trained on roughly ten clips, and the per-cell statistics that
+make a rig usable are themselves computed from that rig's motion. Serving a new
+body plan with no clips at all is the out-of-distribution problem the TopX line
+has not yet closed. Second, every model above executes one instruction. Real
+requests are ordered and composite, and concatenating independently generated
+clips leaves seams and drifting style~\cite{shafir2024priormdm,barquero2024flowmdm}.
+These two limits define the remaining period and are set out in Chapter~3.
 
 \section{Completed contributions}
 
@@ -336,66 +362,106 @@ decomposition in the next work.
 The decoder was published at CVMP 2025 as Hi-RQCT~\cite{sun2025hirqct}; the full
 system was published at AAAI 2026 as MOGO~\cite{sun2025mogo}.
 
-\subsection{Part-tokenized motion and attention-side control}
+\subsection{Part-addressable control and codebook-geometry correction}
 
-Text-conditioned models synthesise plausible motion from prompts, but animation
-and embodied-agent workflows do not stop at text: a character must follow a
-sketched root path, reach an end-effector target, or satisfy a multi-joint
-trajectory while keeping the gait and intent the language described. Existing
-trajectory controllers pay for this either by duplicating large parts of the
-generator to regain per-layer access, or by pushing the cost to test-time
-optimisation.
+A text prompt gives the user no handle on placement: the generator alone decides
+where the body goes, and no amount of prompt editing pins a clip to a root path,
+a foot contact or a planner's trajectory. Learned trajectory controllers pay for
+this control in one of two ways. ControlNet-style adapters such as
+OmniControl~\cite{xie2024omnicontrol} and
+MaskControl~\cite{pinyoanuntapong2025maskcontrol} wire a near-duplicate backbone
+branch into the trunk, and several still rely on inference-time optimisation ---
+MaskControl on a 1,600-iteration refinement. Test-time optimisation methods add
+no branch but perturb latents or noise until the targets are met, moving each
+sample away from the base model's distribution. Both costs have the same origin:
+the control signal, the motion representation and the attention pathway are not
+aligned.
 
-This work provides a compact attention-side control interface for frozen masked
-text-to-motion transformers, built on three components:
+This work treats the anatomy-aligned part codebook as a control surface and uses
+it twice.
 
 \begin{itemize}
-\item \textbf{PartVQ} learns anatomy-aligned part codebooks, so a token denotes
-  a body part at a frame rather than a whole pose. This is what makes the
-  token grid addressable at the granularity control actually needs.
-\item \textbf{T-Concat} exposes each frame--part token as a site that attention
-  can address directly.
-\item \textbf{KV-Control} injects control-conditioned key/value memories at
-  every self-attention layer, while preserving the pretrained query stream, the
-  text cross-attention, the feed-forward blocks and all backbone weights. Only
-  injection parameters on top of a shared trajectory encoder are trained.
+\item \textbf{PartVQ} learns $Q=6$ per-part codebooks with a data-driven
+  partition, so each token names a part at a frame.
+\item \textbf{T-Concat} unpacks the part codebooks along the sequence axis into
+  $49\times 6 = 294$ (frame, part) attention slots on a frozen 20-layer
+  backbone, preserving per-position text cross-attention.
+\item \textbf{KV-Control} appends control-conditioned key/value entries at every
+  self-attention layer through a near-identity low-rank branch. The trainable
+  budget is 10.5M parameters (a shared 9M trajectory encoder and 1.5M of
+  per-layer injection weights); the query stream and all backbone weights are
+  frozen.
+\item \textbf{CodeGeo} finishes the control analytically. The trajectory becomes
+  anchor constraints, and each step solves a $3A\times 3A$ damped least-squares
+  problem $(\mathbf{J}\mathbf{M}\mathbf{J}^{\top}+\lambda\mathbf{I})\,\mathbf{y}=\mathbf{r}$
+  under a training-free metric $\mathbf{M}=\Sigma(\rho)$ taken from the
+  codebook's own second-order statistics. At most eight steps replace the
+  inherited 1,600-iteration refinement.
 \end{itemize}
 
-The reframing is that geometric constraints are made available \emph{as memory
-inside self-attention} rather than delivered through a global pose token or
-enforced at the output. Trajectory conditioning becomes lightweight memory
-retrieval. The resulting adapter tracks root and multi-joint constraints to
-sub-centimetre accuracy under the inherited refinement protocol while retaining
-the text-conditioned motion quality of the frozen prior, and it is small,
-precise and inspectable --- the control path is a named set of injected
-memories rather than a re-trained generator.
+The work also establishes how the metric must be set. Its anisotropy has to
+match how far the anchor set spreads across body parts, because a scalar trust
+region can serve only rows the metric prices comparably: the value best for
+single-joint control is the one value the multi-joint sweep rules out, and the
+two tasks move in opposite directions in FID as anisotropy weakens. On pelvis
+control CodeGeo tracks to 0.24\,cm at FID 0.067 in 1/21 of the per-sample time of
+the refinement it replaces; on multi-joint control it reaches 0.25\,cm at FID
+0.072, improving on MaskControl's 0.72\,cm and 0.083 on both axes. The same
+interface on a channel-stacked trunk of matched quality tracks with 2.2 times the
+error, and the interface transfers to an RVQ and MoMask
+backbone~\cite{guo2024momask}.
 
-The paper is under review at AAAI 2027.
-\needsinput{confirm the current title under which this was submitted, since the
-report refers to it as KV-Control throughout}
+This work is under review at AAAI 2027~\cite{sun2026codegeo}.
 
-\subsection{Topology-agnostic motion generation}
+\subsection{Skeleton-aware text-to-motion across heterogeneous topologies}
 
-Every model above is trained on one skeleton. The standard benchmarks derive
-from SMPL~\cite{loper2015smpl}, and PartVQ's anatomical decomposition is defined
-against it, so animating a structurally different character runs through
-retargeting~\cite{aberman2020skeletonaware}, which assumes a joint
-correspondence between source and target. For morphologies with different limb
-counts, proportions or non-humanoid structure, that correspondence does not
-exist and the assumption fails silently.
+Text-to-motion generation has been built for one body. The joint count, joint
+order and pose parameterisation of a single skeleton are baked into the input
+projection and into any codebook, so every new character means a new model or a
+retargeting step~\cite{aberman2020skeletonaware}, which degrades as morphology
+diverges. Serving hundreds of production rigs with one network meets four
+obstacles: the rigs share no common tensor; the network must be told what each
+joint of an unfamiliar tree is without a parameter per skeleton; a loss summed
+over bodies of 34 to 102 joints lets the largest dominate; and a rig outside the
+training library must be served with no clips or a handful.
 
-TopX generates motion for skeletons of arbitrary topology with no fixed
-reference structure: the skeleton is an input to the model rather than a
-property of the dataset.
-\needsinput{the methodology --- how the skeleton is encoded and consumed, what
-the training corpus is, and what separates TopX from
-AnyTop~\cite{gilles2024anytop} and from retargeting-based approaches}
+TopX is a text-conditioned motion diffusion transformer built on three design
+choices that answer these obstacles.
 
-\needsinput{the headline quantitative result, ideally performance on a skeleton
-class held out from training}
+\begin{itemize}
+\item \textbf{TopX-17} is a per-joint representation of 17 channels (position,
+  6D rotation delta from rest, velocity, contact and root trajectory). Any rigged
+  animation is converted from its kinematic tree, rest pose and motion alone, and
+  every (rig, joint, channel) cell is standardised by its own statistics. This
+  per-cell normalisation is worth 1.7--2.0 points of R@1 over a per-rig scale.
+\item \textbf{In-context skeleton conditioning.} One token per joint per frame;
+  the rig's clean rest pose leads the sequence, joint descriptions are embedded
+  with LLM2Vec, and a tree-distance bias with learned ancestor tables lets
+  spatial attention tell parent from child. The flat padded-joint construction by
+  which fixed-skeleton generators are usually extended trails this design by
+  0.19--0.20 of R@1 and triples FID.
+\item \textbf{Grouped flow matching} with calibrated channel weights keeps every
+  channel group's share of the gradient independent of the number of cells it
+  spans; the calibration is worth 0.036--0.043 of R@1 and makes a 303M-parameter
+  model train stably.
+\end{itemize}
 
-The paper is complete and in submission to ICLR 2027. Behaviour on skeletons
-outside the training distribution is the subject of Section~3.1.
+The training corpus is 311 animal rigs with 34 to 102 deformation joints across
+108 distinct kinematic trees, carrying 77,894 captioned clips (6.2M frames) from
+the AniMo4D annotation set~\cite{wang2025animo}. Scored by a skeleton-aware
+text--motion evaluator, TopX reaches R@1 0.867 against 0.904 for real clips, with
+FID 0.005, and retrieval and FID improve monotonically from 36M to 303M
+parameters. The output is what a rig plays directly: per-joint rotations and a
+world-space root trajectory, with no inverse-kinematics fit.
+
+Rigs outside the library are served by the same forward pass. On four held-out
+Truebones rigs (buffalo, gazelle, dragon and spider, the whole Truebones zoo being
+kept out of training), a low-rank adapter trained on 8--26 clips brings the
+FK--pose gap from 0.57--4.5 bone lengths to 0.23--0.35, with the largest drop on
+the two rigs farthest from the library; one adapter pooled over eight flying rigs
+removes the jitter excess on all seven scored rigs.
+
+The paper is in submission to ICLR 2027~\cite{sun2026topx}.
 
 \subsection{Collaborative work}
 
@@ -452,12 +518,14 @@ building on components contributed here.
 \item \textbf{CVPR 2026} --- \emph{MotionDuet: Dual-Conditioned 3D Human Motion
   Generation with Video-Regularized Text Learning}. Second author.
 
-\item \textbf{AAAI 2027, under review} --- \emph{KV-Control: Parameter-Efficient K/V
-  Injection for Trajectory-Controlled Text-to-Motion}. First author. PartVQ,
-  T-Concat and attention-side control injection.
+\item \textbf{AAAI 2027, under review} --- \emph{Match the Step Metric to the
+  Anchor Spread: Codebook-Geometry Correction for Trajectory-Controlled
+  Text-to-Motion}. First author. PartVQ, T-Concat, KV-Control and CodeGeo; an
+  earlier version appeared as the KV-Control preprint~\cite{sun2026kvcontrol}.
 
-\item \textbf{ICLR 2027, in submission} --- \emph{TopX}. First author.
-  Generation over arbitrary skeleton topologies.
+\item \textbf{ICLR 2027, under review} --- \emph{TopX: Skeleton-Aware
+  In-Context Text-to-Motion Diffusion across Heterogeneous Topologies}. First
+  author. One model for 311 production rigs, with the skeleton as a prompt.
 
 \item \textbf{Collaborative work, 2026} ---
   \emph{MoGeFlow}~\cite{fang2026mogeflow},
@@ -468,42 +536,41 @@ building on components contributed here.
 % =================================================================
 \chapter{Plan of Unfinished Work}
 
-Two threads remain, addressing the two generality limits identified at the end
-of Section~2.1: dependence on a single body, and dependence on a single
-instruction.
+Two threads remain, addressing the two limits identified at the end of
+Section~2.1: serving body plans the model has never seen without per-rig data,
+and executing more than one instruction.
 
 \section{Out-of-distribution specialisation for topology-agnostic generation}
 
 \workitem{%
-TopX makes the skeleton an input rather than a dataset property. This work
-establishes what that buys on skeletons far from the training distribution, and
-how cheaply the model can be specialised to a new one. It completes Chapter~6.}{%
-To characterise and then reduce the degradation of topology-agnostic generation
-under out-of-distribution skeletons --- morphologies, limb counts and
-proportions absent from training --- and to determine how much target-domain
-data is needed to specialise the model to a new topology.}{%
-A topology-agnostic model learns two separable things: motion dynamics, which
-transfer across morphology, and a structural prior over skeletons, which does
-not. Out-of-distribution failure is therefore concentrated in the structural
-component, is visible in internal representations before it is visible in output
-quality, and can be repaired with a small amount of target data by adapting only
-that component --- with generative replay from the base model preventing the
-adaptation from erasing the dynamics.}{%
+TopX makes the skeleton an input, and already serves unseen rigs zero-shot and
+with a per-rig adapter. What it does not yet do is serve a new body plan with no
+clips: bodies far from the library still need an adapter, and the per-cell
+statistics every rig requires are computed from that rig's own motion. This work
+closes that gap and completes Chapter~6.}{%
+To serve a rig whose body plan is absent from training with no clips at all, and
+to reduce the clips needed to reach in-library quality on the hardest bodies.}{%
+The TopX results already point to where the difficulty sits. Zero-shot error is
+small for rigs close to the library and large for the two farthest (4.5 bone
+lengths for the dragon against 0.57 for the gazelle), and a single adapter pooled
+over eight flying rigs removes the jitter excess on all of them. Out-of-distribution
+difficulty is therefore organised by body plan rather than by individual rig.
+Two consequences follow. First, an adapter shared across a body-plan family
+transfers to members of that family never seen by the adapter, which replaces
+per-rig adaptation with per-family adaptation. Second, a rig's per-cell
+statistics are determined largely by its kinematic tree and rest pose, so they
+can be predicted from the skeleton, which removes the last requirement for motion
+data at deployment.}{%
 \begin{enumerate}
-\item Build an out-of-distribution evaluation protocol: held-out skeleton
-  classes at controlled distance from the training distribution, with quality
-  reported as a function of that distance rather than as one aggregate
-  number~\cite{hendrycks2021ood}.
-\item Locate the degradation by separating dynamics and structural components
-  in the representation, and test whether failure is predictable from internal
-  representations ahead of output quality.
-\item Build the specialisation procedure: parameter-efficient adaptation of the
-  structural component with generative replay, and measure the data--quality
-  trade-off curve for a new topology.
-\item Evaluate against retargeting baselines~\cite{aberman2020skeletonaware} and
-  AnyTop~\cite{gilles2024anytop} on the held-out classes.
-  \needsinput{which OOD skeleton sets are available, and whether a non-humanoid
-  corpus is in hand}
+\item Group the held-out Truebones rigs by body plan and report quality as a
+  function of distance from the training library rather than as one aggregate.
+\item Train a statistics predictor from kinematic tree and rest pose to per-cell
+  mean and standard deviation, and evaluate true zero-clip deployment against
+  the current zero arm, which uses statistics computed from real clips.
+\item Train body-plan family adapters and test them on family members held out
+  from the adapter, measuring the clips--quality curve against per-rig LoRA.
+\item Compare against the Truebones-only reference and against
+  AnyTop~\cite{gat2025anytop} and the concurrent UniMate on the same rigs.
 \end{enumerate}}
 
 \section{Multi-subtask motion generation}
@@ -607,9 +674,9 @@ accepted paper.
 \toprule
 \textbf{Date} & \textbf{Planned work}\\
 \midrule
-September 2026 & TopX --- ICLR 2027 submission (in progress)\\
+September 2026 & TopX --- ICLR 2027 submission\\
 November 2026  & Multi-subtask --- CVPR 2027 submission (optimistic)\\
-January 2027   & KV-Control --- AAAI 2027 decision; camera-ready or resubmission\\
+January 2027   & CodeGeo --- AAAI 2027 decision; camera-ready or resubmission\\
 March 2027     & Multi-subtask --- ICCV 2027 submission (realistic)\\
 March 2027     & TopX OOD extension --- ICCV 2027 or journal submission\\
 May 2027       & Multi-subtask --- NeurIPS 2027 submission (fallback)\\
@@ -628,9 +695,9 @@ September 2027 & Thesis submission\\
 \item \textbf{Hi-RQCT:} published, CVMP 2025.
 \item \textbf{MOGO:} published, AAAI 2026.
 \item \textbf{MotionDuet:} published, CVPR 2026.
-\item \textbf{KV-Control:} under review at AAAI 2027; fallback submission to
-  CVPR 2027.
-\item \textbf{TopX:} in submission to ICLR 2027; the out-of-distribution
+\item \textbf{CodeGeo (KV-Control):} under review at AAAI 2027; fallback
+  submission to CVPR 2027.
+\item \textbf{TopX:} under review at ICLR 2027; the out-of-distribution
   specialisation work follows as an ICCV 2027 submission or a journal
   extension.
 \item \textbf{Multi-subtask motion generation:} CVPR 2027 optimistic, ICCV 2027
