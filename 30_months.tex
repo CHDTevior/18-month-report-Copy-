@@ -76,9 +76,9 @@ Dr Hansung Kim\\
 Dr Zhiwu Huang
 \end{flushright}
 \end{minipage}\\[3cm]
-{\itshape A report submitted in fulfillment of the requirements for the
-30 month report\\ in the Vision, Learning and Control research group}\\[2cm]
-{\large September, 2026}
+{\itshape A report submitted in fulfilment of the requirements for the
+30-month report\\ in the Vision, Learning and Control research group}\\[2cm]
+{\large September 2026}
 \vfill
 \end{titlepage}
 
@@ -86,10 +86,10 @@ Dr Zhiwu Huang
 \chapter{Thesis Structure}
 
 The following table details the main focus of each chapter of the final thesis.
-Chapters~3--6 correspond to work that is complete and either published or under
-review; Chapter~7 corresponds to work in progress and is described in
-Chapter~3 of this report. A more detailed structure, including subsections,
-follows the table.
+Chapters~3--6 correspond to completed work that is published or under review.
+Chapter~7, together with the out-of-distribution extension of Chapter~6, is work
+in progress and is set out in Chapter~3 of this report. A more detailed
+structure, including subsections, follows the table.
 
 \begin{table}[h]
 \centering\small
@@ -104,16 +104,16 @@ Chapter 3 & Shared Conditional Representation for Text and Motion (MCRE)
             editing directions\\
 Chapter 4 & Hierarchical One-Pass Autoregressive Generation (Hi-RQCT, MOGO)
           & Real-time, infinite-length generation via scale-adaptive residual
-            quantization and one-pass causal decoding\\
+            quantisation and one-pass causal decoding\\
 Chapter 5 & Part-Addressable Control and Codebook-Geometry Correction
             (PartVQ, KV-Control, CodeGeo)
           & Trajectory control injected into a frozen prior as attention
-            memory, finished in at most eight analytic steps in the codebook's
-            own geometry\\
+            memory, refined to the target in at most eight analytic steps in
+            the codebook's own geometry\\
 Chapter 6 & Skeleton-Aware Text-to-Motion across Heterogeneous Topologies
             (TopX)
-          & One model serving 311 production rigs, with the skeleton as a
-            prompt and zero- and few-shot transfer to unseen rigs\\
+          & One model serving 311 production rigs, taking the skeleton as a
+            prompt and transferring zero- and few-shot to unseen rigs\\
 Chapter 7 & Multi-Subtask Motion Generation & [TBD]\\
 Chapter 8 & Conclusion \& Future Work & --\\
 \bottomrule
@@ -136,8 +136,8 @@ Chapter 8 & Conclusion \& Future Work & --\\
 \item \textbf{Literature Review: Controllability and Generality in Motion
   Generation}
   \begin{enumerate}[leftmargin=1.4em]
-  \item Text-to-motion: VAEs, tokenization and diffusion
-  \item Motion representation and quantization
+  \item Text-to-motion: VAEs, tokenisation and diffusion
+  \item Motion representation and quantisation
   \item Spatial control, editing and composition
   \item Skeleton topology, retargeting and transfer
   \item Synopsis of literature
@@ -155,7 +155,7 @@ Chapter 8 & Conclusion \& Future Work & --\\
 \item \textbf{Hierarchical One-Pass Autoregressive Generation}
   \begin{enumerate}[leftmargin=1.4em]
   \item Overview
-  \item Scale-adaptive residual quantization and cross-level decorrelation
+  \item Scale-adaptive residual quantisation and cross-level decorrelation
   \item One-pass hierarchical causal decoding
   \item Infinite-length generation and mid-stream prompt switching
   \item Results and evaluation
@@ -212,7 +212,7 @@ This thesis builds a text-to-motion system that is controllable at the level
 practitioners actually work at --- a named joint, a sketched path, a specific
 interval --- and general enough to survive a change of body or a change of
 task. The work reaches this through a single technical commitment: motion is
-represented as a \emph{part-tokenized substrate}, and control is expressed as
+represented as a \emph{part-tokenised substrate}, and control is expressed as
 an operation on that substrate rather than as a stronger condition on a
 generator.
 
@@ -229,8 +229,8 @@ models~\cite{tevet2022human,chen2023executing,zhang2024motiondiffuse} sample
 iteratively and train at a fixed horizon, which rules out interactive use.
 Hi-RQCT~\cite{sun2025hirqct} and then MOGO~\cite{sun2025mogo} discretise motion
 with a scale-adaptive residual vector
-quantizer~\cite{vandenoord2017neural,zeghidour2022soundstream} and decode every
-quantization level in a single causal forward pass, giving real-time synthesis,
+quantiser~\cite{vandenoord2017neural,zeghidour2022soundstream} and decode every
+quantisation level in a single causal forward pass, giving real-time synthesis,
 unbounded sequence length and mid-stream prompt switching. MOGO was published at
 AAAI 2026. This established the discrete substrate the thesis works on, and
 sharpened the control problem: a token grid is fast, but a flat grid of
@@ -329,19 +329,19 @@ Humans~\cite{sun2024mcre}.
 
 \subsection{Hierarchical one-pass autoregressive generation}
 
-Tokenization-based motion models~\cite{chuan2022tm2t,guo2024momask} decode
-faster than diffusion, but residual quantization schemes generally require one
-decoding pass per quantization level, and error accumulates over long
+Tokenisation-based motion models~\cite{chuan2022tm2t,guo2024momask} decode
+faster than diffusion, but residual quantisation schemes generally require one
+decoding pass per quantisation level, and error accumulates over long
 autoregressive rollouts.
 
-This work contributed two components. MoSA-VQ is a residual vector quantizer
+This work contributed two components. MoSA-VQ is a residual vector quantiser
 with learnable per-level scaling and a cross-level decorrelation objective; the
-decorrelation term minimises the batch-wise covariance between a quantized
+decorrelation term minimises the batch-wise covariance between a quantised
 vector and the residual passed to the next level, enforcing approximate
 statistical orthogonality across the hierarchy so each level encodes what the
 previous levels did not. This improves codebook utilisation and yields more
 compact codes under a fixed budget. The RQHC-Transformer is a causal decoder
-whose structure mirrors the quantization hierarchy and which emits all levels in
+whose structure mirrors the quantisation hierarchy and which emits all levels in
 one forward pass, removing per-level decoding cost while preserving temporal
 coherence.
 
@@ -356,7 +356,7 @@ Ablations confirmed both components. Removing the decorrelation objective
 degraded generation FID and retrieval accuracy consistently across metrics.
 Varying codebook capacity showed that the configuration minimising
 reconstruction error is not the one maximising generation quality, which
-established that quantization error here is structured rather than uniform
+established that quantisation error here is structured rather than uniform
 noise --- the observation that motivated moving to an anatomy-aligned
 decomposition in the next work.
 
@@ -602,7 +602,7 @@ independently and blended~\cite{shafir2024priormdm,barquero2024flowmdm}, so the
 transition is a smoothing artefact rather than something the model has learned.
 Writing subtask boundaries into the sequence the model decodes makes the
 transition part of the modelled distribution, improving both boundary quality
-and global style consistency over blending. The part-tokenized substrate of
+and global style consistency over blending. The part-tokenised substrate of
 Chapter~5 is what makes this practical: tokens are already addressable per part
 and per frame, so a boundary can be expressed without leaving the
 representation, and MOGO's causal decoder already accepts a condition change
@@ -614,7 +614,7 @@ mid-sequence.}{%
 \item Assemble training data with subtask annotations, from compositional
   corpora~\cite{lee2023multiact,zhang2023finemogen} or by segmenting long
   sequences. \needsinput{the dataset in use}
-\item Train the compositional decoder on the part-tokenized backbone and verify
+\item Train the compositional decoder on the part-tokenised backbone and verify
   that per-part controllability survives composition.
 \item Evaluate transition quality, long-horizon drift and style consistency
   against blending-based baselines, and confirm that KV-Control injection still
