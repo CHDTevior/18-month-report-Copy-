@@ -60,7 +60,7 @@
 {\large\scshape University of Southampton}\\[1.2cm]
 {\scshape Faculty of Engineering and Physical Sciences}\\
 {\scshape Electronics and Computer Science}\\[2.5cm]
-{\LARGE\bfseries Controllable and Generalisable\\[0.25cm]
+{\LARGE\bfseries Controllable and Generalizable\\[0.25cm]
 Motion Generation\par}
 \vspace{2.5cm}
 \begin{minipage}{0.45\textwidth}
@@ -104,7 +104,7 @@ Chapter 3 & Shared Conditional Representation for Text and Motion (MCRE)
             editing directions\\
 Chapter 4 & Hierarchical One-Pass Autoregressive Generation (Hi-RQCT, MOGO)
           & Real-time, infinite-length generation via scale-adaptive residual
-            quantisation and one-pass causal decoding\\
+            quantization and one-pass causal decoding\\
 Chapter 5 & Part-Addressable Control and Codebook-Geometry Correction
             (PartVQ, KV-Control, CodeGeo)
           & Trajectory control injected into a frozen prior as attention
@@ -136,8 +136,8 @@ Chapter 8 & Conclusion \& Future Work & --\\
 \item \textbf{Literature Review: Controllability and Generality in Motion
   Generation}
   \begin{enumerate}[leftmargin=1.4em]
-  \item Text-to-motion: VAEs, tokenisation and diffusion
-  \item Motion representation and quantisation
+  \item Text-to-motion: VAEs, tokenization and diffusion
+  \item Motion representation and quantization
   \item Spatial control, editing and composition
   \item Skeleton topology, retargeting and transfer
   \item Synopsis of literature
@@ -145,7 +145,7 @@ Chapter 8 & Conclusion \& Future Work & --\\
 
 \item \textbf{Shared Conditional Representation for Text and Motion}\\
   This chapter builds the conditioning interface used throughout the thesis.
-  A lightweight motion adapter is aligned to a frozen pre-trained text encoder
+  A lightweight motion adapter is aligned to a frozen pretrained text encoder
   so that captions and motions occupy one space, in which semantic edits are
   displacement vectors and multiple conditions compose by addition. The chapter
   also establishes the granularity limit that the rest of the thesis removes:
@@ -155,7 +155,7 @@ Chapter 8 & Conclusion \& Future Work & --\\
 \item \textbf{Hierarchical One-Pass Autoregressive Generation}
   \begin{enumerate}[leftmargin=1.4em]
   \item Overview
-  \item Scale-adaptive residual quantisation and cross-level decorrelation
+  \item Scale-adaptive residual quantization and cross-level decorrelation
   \item One-pass hierarchical causal decoding
   \item Infinite-length generation and mid-stream prompt switching
   \item Results and evaluation
@@ -182,7 +182,7 @@ Chapter 8 & Conclusion \& Future Work & --\\
   \item Grouped flow matching
   \item Results and evaluation
   \item Zero- and few-shot extension to unseen rigs
-  \item Out-of-distribution generalisation
+  \item Out-of-distribution generalization
   \item Conclusion
   \end{enumerate}
 
@@ -212,7 +212,7 @@ This thesis builds a text-to-motion system that is controllable at the level
 practitioners actually work at --- a named joint, a sketched path, a specific
 interval --- and general enough to survive a change of body or a change of
 task. The work reaches this through a single technical commitment: motion is
-represented as a \emph{part-tokenised substrate}, and control is expressed as
+represented as a \emph{part-tokenized substrate}, and control is expressed as
 an operation on that substrate rather than as a stronger condition on a
 generator.
 
@@ -227,10 +227,10 @@ motion is but not where or when any part of it happens.
 The second work made generation fast and unbounded. Diffusion text-to-motion
 models~\cite{tevet2022human,chen2023executing,zhang2024motiondiffuse} sample
 iteratively and train at a fixed horizon, which rules out interactive use.
-Hi-RQCT~\cite{sun2025hirqct} and then MOGO~\cite{sun2025mogo} discretise motion
+Hi-RQCT~\cite{sun2025hirqct} and then MOGO~\cite{sun2025mogo} discretize motion
 with a scale-adaptive residual vector
-quantiser~\cite{vandenoord2017neural,zeghidour2022soundstream} and decode every
-quantisation level in a single causal forward pass, giving real-time synthesis,
+quantizer~\cite{vandenoord2017neural,zeghidour2022soundstream} and decode every
+quantization level in a single causal forward pass, giving real-time synthesis,
 unbounded sequence length and mid-stream prompt switching. MOGO was published at
 AAAI 2026. This established the discrete substrate the thesis works on, and
 sharpened the control problem: a token grid is fast, but a flat grid of
@@ -278,7 +278,7 @@ are not human, and a studio has hundreds of rigs, each with its own joint count,
 naming and helper bones. The fourth work, TopX~\cite{sun2026topx}, carries the
 addressable-token idea from one body to any body. Its token is one joint at one
 frame rather than one part at one frame; \textbf{TopX-17} converts any rigged
-animation from its kinematic tree, rest pose and motion alone, and standardises
+animation from its kinematic tree, rest pose and motion alone, and standardizes
 every (rig, joint, channel) cell by its own statistics, so that rigs of very
 different proportions share one network input with no template, retargeting or
 inverse kinematics. The skeleton enters as a prompt --- the rig's rest pose
@@ -294,8 +294,8 @@ Two limits remain. First, TopX serves rigs outside its library zero-shot, but
 bodies far from it --- a winged dragon, a many-legged spider --- still need a
 per-rig adapter trained on roughly ten clips, and the per-cell statistics that
 make a rig usable are themselves computed from that rig's motion. The same verb
-is also realised differently by a quadruped, a bird and an arthropod, and text
-following across families is not yet guaranteed. Generalising to unseen body
+is also realized differently by a quadruped, a bird and an arthropod, and text
+following across families is not yet guaranteed. Generalizing to unseen body
 plans, with text that means the right motion on each, is the
 out-of-distribution problem the TopX line has not yet closed. Second, every model above executes one instruction. Real
 requests are ordered and composite, and concatenating independently generated
@@ -312,7 +312,7 @@ embedding from an encoder that has never seen motion, which couples the two
 representations loosely and makes anything other than one-shot generation ---
 editing, interpolation, composition --- awkward to express.
 
-This work trained a lightweight motion adapter against a frozen pre-trained
+This work trained a lightweight motion adapter against a frozen pretrained
 text encoder, mapping a motion and its caption to nearby points in one
 conditional space. Because the space is shared and the objective is
 contrastive, semantic relationships between captions transfer to motions:
@@ -329,19 +329,19 @@ Humans~\cite{sun2024mcre}.
 
 \subsection{Hierarchical one-pass autoregressive generation}
 
-Tokenisation-based motion models~\cite{chuan2022tm2t,guo2024momask} decode
-faster than diffusion, but residual quantisation schemes generally require one
-decoding pass per quantisation level, and error accumulates over long
+Tokenization-based motion models~\cite{chuan2022tm2t,guo2024momask} decode
+faster than diffusion, but residual quantization schemes generally require one
+decoding pass per quantization level, and error accumulates over long
 autoregressive rollouts.
 
-This work contributed two components. MoSA-VQ is a residual vector quantiser
+This work contributed two components. MoSA-VQ is a residual vector quantizer
 with learnable per-level scaling and a cross-level decorrelation objective; the
-decorrelation term minimises the batch-wise covariance between a quantised
+decorrelation term minimizes the batch-wise covariance between a quantized
 vector and the residual passed to the next level, enforcing approximate
 statistical orthogonality across the hierarchy so each level encodes what the
-previous levels did not. This improves codebook utilisation and yields more
+previous levels did not. This improves codebook utilization and yields more
 compact codes under a fixed budget. The RQHC-Transformer is a causal decoder
-whose structure mirrors the quantisation hierarchy and which emits all levels in
+whose structure mirrors the quantization hierarchy and which emits all levels in
 one forward pass, removing per-level decoding cost while preserving temporal
 coherence.
 
@@ -349,14 +349,14 @@ Together these give near real-time decoding, generation of unbounded length,
 and injection of a new text prompt at an arbitrary point in the sequence --- the
 property that makes the system usable for avatar control and teleoperation
 rather than offline clip synthesis. A textual condition alignment module
-normalises free-form input into structured instructions before generation,
+normalizes free-form input into structured instructions before generation,
 improving robustness on prompts unlike those seen in training.
 
 Ablations confirmed both components. Removing the decorrelation objective
 degraded generation FID and retrieval accuracy consistently across metrics.
-Varying codebook capacity showed that the configuration minimising
-reconstruction error is not the one maximising generation quality, which
-established that quantisation error here is structured rather than uniform
+Varying codebook capacity showed that the configuration minimizing
+reconstruction error is not the one maximizing generation quality, which
+established that quantization error here is structured rather than uniform
 noise --- the observation that motivated moving to an anatomy-aligned
 decomposition in the next work.
 
@@ -371,8 +371,8 @@ a foot contact or a planner's trajectory. Learned trajectory controllers pay for
 this control in one of two ways. ControlNet-style adapters such as
 OmniControl~\cite{xie2024omnicontrol} and
 MaskControl~\cite{pinyoanuntapong2025maskcontrol} wire a near-duplicate backbone
-branch into the trunk, and several still rely on inference-time optimisation ---
-MaskControl on a 1,600-iteration refinement. Test-time optimisation methods add
+branch into the trunk, and several still rely on inference-time optimization ---
+MaskControl on a 1,600-iteration refinement. Test-time optimization methods add
 no branch but perturb latents or noise until the targets are met, moving each
 sample away from the base model's distribution. Both costs have the same origin:
 the control signal, the motion representation and the attention pathway are not
@@ -417,7 +417,7 @@ This work is under review at AAAI 2027~\cite{sun2026codegeo}.
 \subsection{Skeleton-aware text-to-motion across heterogeneous topologies}
 
 Text-to-motion generation has been built for one body. The joint count, joint
-order and pose parameterisation of a single skeleton are baked into the input
+order and pose parameterization of a single skeleton are baked into the input
 projection and into any codebook, so every new character means a new model or a
 retargeting step~\cite{aberman2020skeletonaware}, which degrades as morphology
 diverges. Serving hundreds of production rigs with one network meets four
@@ -433,8 +433,8 @@ choices that answer these obstacles.
 \item \textbf{TopX-17} is a per-joint representation of 17 channels (position,
   6D rotation delta from rest, velocity, contact and root trajectory). Any rigged
   animation is converted from its kinematic tree, rest pose and motion alone, and
-  every (rig, joint, channel) cell is standardised by its own statistics. This
-  per-cell normalisation is worth 1.7--2.0 points of R@1 over a per-rig scale.
+  every (rig, joint, channel) cell is standardized by its own statistics. This
+  per-cell normalization is worth 1.7--2.0 points of R@1 over a per-rig scale.
 \item \textbf{In-context skeleton conditioning.} One token per joint per frame;
   the rig's clean rest pose leads the sequence, joint descriptions are embedded
   with LLM2Vec, and a tree-distance bias with learned ancestor tables lets
@@ -538,16 +538,16 @@ building on components contributed here.
 \chapter{Plan of Unfinished Work}
 
 Two threads remain, addressing the two limits identified at the end of
-Section~2.1: generalising to body plans the model has never seen, with text that
+Section~2.1: generalizing to body plans the model has never seen, with text that
 means the right motion on every family, and executing more than one
 instruction.
 
-\section{Out-of-distribution generalisation for topology-agnostic generation}
+\section{Out-of-distribution generalization for topology-agnostic generation}
 
 \workitem{%
 TopX makes the skeleton an input and serves unseen rigs zero-shot and with a
 per-rig adapter. Two problems remain open, and both decide whether a
-topology-agnostic model generalises rather than interpolates across its
+topology-agnostic model generalizes rather than interpolates across its
 library: generating for a body the library does not contain, and making the same
 text mean the right motion on bodies from different families. This work
 addresses both and completes Chapter~6.}{%
@@ -558,19 +558,19 @@ to look behind'' produce the motion that phrase denotes for each family, rather
 than the motion it denotes for the family that dominates the training data.}{%
 The TopX results locate both difficulties. Zero-shot error is small for rigs
 close to the library and large for bodies far from it (an FK--pose gap of 4.5
-bone lengths for a winged dragon against 0.57 for a gazelle), so generalisation
-is organised by body-plan family rather than by individual rig. Text following
-fails in a matching way: the same verb is realised differently by a quadruped, a
+bone lengths for a winged dragon against 0.57 for a gazelle), so generalization
+is organized by body-plan family rather than by individual rig. Text following
+fails in a matching way: the same verb is realized differently by a quadruped, a
 bird and an arthropod, and a model that ties a caption to one family's
-realisation transfers that realisation to the others. The hypothesis is that a
+realization transfers that realization to the others. The hypothesis is that a
 caption fixes body-plan-independent intent --- speed, heading, rhythm of contact,
 which functional group leads --- and that the skeleton prompt fixes its
-realisation. Conditioning text on the functional roles of joints, which TopX
+realization. Conditioning text on the functional roles of joints, which TopX
 already describes in natural language, rather than on the motion statistics of
 the families seen in training, makes text following transfer across families,
 and the same separation is what lets an unseen family be served without clips.}{%
 \begin{enumerate}
-\item Build a generalisation protocol with two held-out axes: unseen members of
+\item Build a generalization protocol with two held-out axes: unseen members of
   seen families, and entire unseen families. Report quality as a function of
   body-plan distance from the library rather than as one aggregate.
 \item Build a cross-family text-following benchmark: the same caption issued to
@@ -578,7 +578,7 @@ and the same separation is what lets an unseen family be served without clips.}{
   family and by agreement in body-plan-independent descriptors (speed, heading,
   contact rhythm).
 \item Condition the caption on joint functional roles and train with
-  family-balanced sampling, so that no family's realisation of a verb dominates.
+  family-balanced sampling, so that no family's realization of a verb dominates.
 \item Remove the last per-rig data requirement by predicting per-cell
   statistics from the kinematic tree and rest pose, and evaluate zero-clip
   deployment against statistics computed from real clips.
@@ -602,7 +602,7 @@ independently and blended~\cite{shafir2024priormdm,barquero2024flowmdm}, so the
 transition is a smoothing artefact rather than something the model has learned.
 Writing subtask boundaries into the sequence the model decodes makes the
 transition part of the modelled distribution, improving both boundary quality
-and global style consistency over blending. The part-tokenised substrate of
+and global style consistency over blending. The part-tokenized substrate of
 Chapter~5 is what makes this practical: tokens are already addressable per part
 and per frame, so a boundary can be expressed without leaving the
 representation, and MOGO's causal decoder already accepts a condition change
@@ -614,7 +614,7 @@ mid-sequence.}{%
 \item Assemble training data with subtask annotations, from compositional
   corpora~\cite{lee2023multiact,zhang2023finemogen} or by segmenting long
   sequences. \needsinput{the dataset in use}
-\item Train the compositional decoder on the part-tokenised backbone and verify
+\item Train the compositional decoder on the part-tokenized backbone and verify
   that per-part controllability survives composition.
 \item Evaluate transition quality, long-horizon drift and style consistency
   against blending-based baselines, and confirm that KV-Control injection still
@@ -649,7 +649,7 @@ mid-sequence.}{%
 \ganttgroup{TopX / OOD}{1}{7}\\
 \ganttbar{OOD evaluation protocol}{1}{3}\\
 \ganttbar{Degradation diagnosis}{3}{5}\\
-\ganttbar{Specialisation + replay}{4}{7}\\
+\ganttbar{Specialization + replay}{4}{7}\\
 \ganttmilestone{ICLR 2027 decision / resubmission}{5}\\
 
 \ganttgroup{Multi-subtask}{1}{9}\\
@@ -672,7 +672,7 @@ Months are shown along the top.}
 \end{figure}
 
 Chapters~3--5 derive from published or submitted papers and require
-reorganisation rather than new writing, so drafting can begin as soon as the
+reorganization rather than new writing, so drafting can begin as soon as the
 TopX submission is settled. On this plan the thesis is submitted in September
 2027. Submission in March--June 2027 is achievable if the multi-subtask work is
 taken to a single conference submission rather than developed further; the
@@ -711,7 +711,7 @@ September 2027 & Thesis submission\\
 \item \textbf{CodeGeo (KV-Control):} under review at AAAI 2027; fallback
   submission to CVPR 2027.
 \item \textbf{TopX:} under review at ICLR 2027; the out-of-distribution
-  generalisation work follows as an ICCV 2027 submission or a journal
+  generalization work follows as an ICCV 2027 submission or a journal
   extension.
 \item \textbf{Multi-subtask motion generation:} CVPR 2027 optimistic, ICCV 2027
   realistic, NeurIPS 2027 fallback.
