@@ -61,8 +61,7 @@
 {\scshape Faculty of Engineering and Physical Sciences}\\
 {\scshape Electronics and Computer Science}\\[2.5cm]
 {\LARGE\bfseries Controllable and Generalisable\\[0.25cm]
-3D Human Motion Generation\\[0.25cm]
-Using Multimodal Approaches\par}
+Motion Generation\par}
 \vspace{2.5cm}
 \begin{minipage}{0.45\textwidth}
 \begin{flushleft}\large
@@ -134,8 +133,8 @@ Chapter 8 & Conclusion \& Future Work & --\\
   \item Contributions
   \end{enumerate}
 
-\item \textbf{Literature Review: Controllability and Generality in Human
-  Motion Generation}
+\item \textbf{Literature Review: Controllability and Generality in Motion
+  Generation}
   \begin{enumerate}[leftmargin=1.4em]
   \item Text-to-motion: VAEs, tokenization and diffusion
   \item Motion representation and quantization
@@ -183,7 +182,7 @@ Chapter 8 & Conclusion \& Future Work & --\\
   \item Grouped flow matching
   \item Results and evaluation
   \item Zero- and few-shot extension to unseen rigs
-  \item Out-of-distribution specialisation
+  \item Out-of-distribution generalisation
   \item Conclusion
   \end{enumerate}
 
@@ -294,9 +293,11 @@ unseen rig is served by the same forward pass.
 Two limits remain. First, TopX serves rigs outside its library zero-shot, but
 bodies far from it --- a winged dragon, a many-legged spider --- still need a
 per-rig adapter trained on roughly ten clips, and the per-cell statistics that
-make a rig usable are themselves computed from that rig's motion. Serving a new
-body plan with no clips at all is the out-of-distribution problem the TopX line
-has not yet closed. Second, every model above executes one instruction. Real
+make a rig usable are themselves computed from that rig's motion. The same verb
+is also realised differently by a quadruped, a bird and an arthropod, and text
+following across families is not yet guaranteed. Generalising to unseen body
+plans, with text that means the right motion on each, is the
+out-of-distribution problem the TopX line has not yet closed. Second, every model above executes one instruction. Real
 requests are ordered and composite, and concatenating independently generated
 clips leaves seams and drifting style~\cite{shafir2024priormdm,barquero2024flowmdm}.
 These two limits define the remaining period and are set out in Chapter~3.
@@ -537,40 +538,52 @@ building on components contributed here.
 \chapter{Plan of Unfinished Work}
 
 Two threads remain, addressing the two limits identified at the end of
-Section~2.1: serving body plans the model has never seen without per-rig data,
-and executing more than one instruction.
+Section~2.1: generalising to body plans the model has never seen, with text that
+means the right motion on every family, and executing more than one
+instruction.
 
-\section{Out-of-distribution specialisation for topology-agnostic generation}
+\section{Out-of-distribution generalisation for topology-agnostic generation}
 
 \workitem{%
-TopX makes the skeleton an input, and already serves unseen rigs zero-shot and
-with a per-rig adapter. What it does not yet do is serve a new body plan with no
-clips: bodies far from the library still need an adapter, and the per-cell
-statistics every rig requires are computed from that rig's own motion. This work
-closes that gap and completes Chapter~6.}{%
-To serve a rig whose body plan is absent from training with no clips at all, and
-to reduce the clips needed to reach in-library quality on the hardest bodies.}{%
-The TopX results already point to where the difficulty sits. Zero-shot error is
-small for rigs close to the library and large for the two farthest (4.5 bone
-lengths for the dragon against 0.57 for the gazelle), and a single adapter pooled
-over eight flying rigs removes the jitter excess on all of them. Out-of-distribution
-difficulty is therefore organised by body plan rather than by individual rig.
-Two consequences follow. First, an adapter shared across a body-plan family
-transfers to members of that family never seen by the adapter, which replaces
-per-rig adaptation with per-family adaptation. Second, a rig's per-cell
-statistics are determined largely by its kinematic tree and rest pose, so they
-can be predicted from the skeleton, which removes the last requirement for motion
-data at deployment.}{%
+TopX makes the skeleton an input and serves unseen rigs zero-shot and with a
+per-rig adapter. Two problems remain open, and both decide whether a
+topology-agnostic model generalises rather than interpolates across its
+library: generating for a body the library does not contain, and making the same
+text mean the right motion on bodies from different families. This work
+addresses both and completes Chapter~6.}{%
+To generate faithful, text-aligned motion for rigs from body-plan families that
+are absent from training, and for unseen members of families that are present,
+with no rig-specific clips; and to make a caption such as ``runs'' or ``turns
+to look behind'' produce the motion that phrase denotes for each family, rather
+than the motion it denotes for the family that dominates the training data.}{%
+The TopX results locate both difficulties. Zero-shot error is small for rigs
+close to the library and large for bodies far from it (an FK--pose gap of 4.5
+bone lengths for a winged dragon against 0.57 for a gazelle), so generalisation
+is organised by body-plan family rather than by individual rig. Text following
+fails in a matching way: the same verb is realised differently by a quadruped, a
+bird and an arthropod, and a model that ties a caption to one family's
+realisation transfers that realisation to the others. The hypothesis is that a
+caption fixes body-plan-independent intent --- speed, heading, rhythm of contact,
+which functional group leads --- and that the skeleton prompt fixes its
+realisation. Conditioning text on the functional roles of joints, which TopX
+already describes in natural language, rather than on the motion statistics of
+the families seen in training, makes text following transfer across families,
+and the same separation is what lets an unseen family be served without clips.}{%
 \begin{enumerate}
-\item Group the held-out Truebones rigs by body plan and report quality as a
-  function of distance from the training library rather than as one aggregate.
-\item Train a statistics predictor from kinematic tree and rest pose to per-cell
-  mean and standard deviation, and evaluate true zero-clip deployment against
-  the current zero arm, which uses statistics computed from real clips.
-\item Train body-plan family adapters and test them on family members held out
-  from the adapter, measuring the clips--quality curve against per-rig LoRA.
-\item Compare against the Truebones-only reference and against
-  AnyTop~\cite{gat2025anytop} and the concurrent UniMate on the same rigs.
+\item Build a generalisation protocol with two held-out axes: unseen members of
+  seen families, and entire unseen families. Report quality as a function of
+  body-plan distance from the library rather than as one aggregate.
+\item Build a cross-family text-following benchmark: the same caption issued to
+  rigs of different families, scored by the skeleton-aware evaluator for each
+  family and by agreement in body-plan-independent descriptors (speed, heading,
+  contact rhythm).
+\item Condition the caption on joint functional roles and train with
+  family-balanced sampling, so that no family's realisation of a verb dominates.
+\item Remove the last per-rig data requirement by predicting per-cell
+  statistics from the kinematic tree and rest pose, and evaluate zero-clip
+  deployment against statistics computed from real clips.
+\item Compare against AnyTop~\cite{gat2025anytop}, the concurrent UniMate, and
+  per-rig adaptation on the same held-out rigs.
 \end{enumerate}}
 
 \section{Multi-subtask motion generation}
@@ -698,7 +711,7 @@ September 2027 & Thesis submission\\
 \item \textbf{CodeGeo (KV-Control):} under review at AAAI 2027; fallback
   submission to CVPR 2027.
 \item \textbf{TopX:} under review at ICLR 2027; the out-of-distribution
-  specialisation work follows as an ICCV 2027 submission or a journal
+  generalisation work follows as an ICCV 2027 submission or a journal
   extension.
 \item \textbf{Multi-subtask motion generation:} CVPR 2027 optimistic, ICCV 2027
   realistic, NeurIPS 2027 fallback.
