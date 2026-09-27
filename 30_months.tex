@@ -383,7 +383,7 @@ Text-to-motion generation has been built for one body. The joint count, joint
 order and pose parameterization of a single skeleton are baked into the input
 projection and into any codebook, so every new character means a new model or a
 retargeting step~\cite{aberman2020skeletonaware}, which degrades as morphology
-diverges. Serving hundreds of production rigs with one network meets four
+diverges. Serving hundreds of production rigs with one network faces four
 obstacles: the rigs share no common tensor; the network must be told what each
 joint of an unfamiliar tree is without a parameter per skeleton; a loss summed
 over bodies of 34 to 102 joints lets the largest dominate; and a rig outside the
@@ -398,7 +398,7 @@ choices that answer these obstacles.
   animation is converted from its kinematic tree, rest pose and motion alone, and
   every (rig, joint, channel) cell is standardized by its own statistics. This
   per-cell normalization is worth 1.7--2.0 points of R@1 over a per-rig scale.
-\item \textbf{In-context skeleton conditioning.} One token per joint per frame;
+\item \textbf{In-context skeleton conditioning.} Each token is one joint at one frame;
   the rig's clean rest pose leads the sequence, joint descriptions are embedded
   with LLM2Vec, and a tree-distance bias with learned ancestor tables lets
   spatial attention tell parent from child. The flat padded-joint construction by
@@ -411,17 +411,18 @@ choices that answer these obstacles.
 \end{itemize}
 
 The training corpus is 311 animal rigs with 34 to 102 deformation joints across
-108 distinct kinematic trees, carrying 77,894 captioned clips (6.2M frames) from
+108 distinct kinematic trees, with 77,894 captioned clips (6.2M frames) from
 the AniMo4D annotation set~\cite{wang2025animo}. Scored by a skeleton-aware
 text--motion evaluator, TopX reaches R@1 0.867 against 0.904 for real clips, with
 FID 0.005, and retrieval and FID improve monotonically from 36M to 303M
 parameters. The output is what a rig plays directly: per-joint rotations and a
 world-space root trajectory, with no inverse-kinematics fit.
 
-Rigs outside the library are served by the same forward pass. On four held-out
-Truebones rigs (buffalo, gazelle, dragon and spider, the whole Truebones zoo being
-kept out of training), a low-rank adapter trained on 8--26 clips brings the
-FK--pose gap to 0.23--0.35 bone lengths, with the largest improvement on the two
+Rigs outside the library are served zero-shot by the same forward pass, and
+few-shot with a low-rank adapter: on four held-out Truebones rigs (buffalo,
+gazelle, dragon and spider, with the whole Truebones zoo held out from training),
+an adapter trained on 8--26 clips brings the FK--pose gap to 0.23--0.35 bone
+lengths, with the largest improvement on the two
 rigs farthest from the library.
 
 This work is under review at ICLR 2027.
