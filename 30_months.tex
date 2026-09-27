@@ -208,54 +208,50 @@ Chapter 8 & Conclusion \& Future Work & --\\
 
 \section{Research narrative}
 
-This thesis builds a text-to-motion system that is controllable at the level
-practitioners actually work at --- a named joint, a sketched path, a specific
-interval --- and general enough to survive a change of body or a change of
-task. The work reaches this through a single technical commitment: motion is
-represented as a \emph{part-tokenized substrate}, and control is expressed as
-an operation on that substrate rather than as a stronger condition on a
-generator.
+This thesis builds a text-to-motion system that is controllable at the
+granularity practitioners work with --- a named joint, a sketched path, a
+specific interval --- and general enough to carry over to a new body or a new
+task. The work reaches this through one representational commitment: motion is
+represented as \emph{addressable tokens}, per body part and then per joint of
+any skeleton, and control is expressed as an operation on those tokens rather
+than as a stronger condition on a generator.
 
 The first work, MCRE~\cite{sun2024mcre}, built the conditioning interface. A
-lightweight motion adapter trained against a frozen text
+lightweight motion adapter aligned to a frozen text
 encoder~\cite{radford2021learning} places captions and motions in one space, so
 that semantic edits become displacement vectors and conditions compose by
-addition. This is the interface every later chapter inherits. It also fixes the
-granularity of what it can express: one vector per clip, which says what a
+addition. This is the interface every later chapter inherits. It also sets the
+limit of what it can express: one vector per clip, which says what a
 motion is but not where or when any part of it happens.
 
 The second work made generation fast and unbounded. Diffusion text-to-motion
 models~\cite{tevet2022human,chen2023executing,zhang2024motiondiffuse} sample
 iteratively and train at a fixed horizon, which rules out interactive use.
-Hi-RQCT~\cite{sun2025hirqct} and then MOGO~\cite{sun2025mogo} discretize motion
+Hi-RQCT~\cite{sun2025hirqct} and then MOGO~\cite{sun2025mogo} (AAAI 2026) discretize motion
 with a scale-adaptive residual vector
 quantizer~\cite{vandenoord2017neural,zeghidour2022soundstream} and decode every
 quantization level in a single causal forward pass, giving real-time synthesis,
-unbounded sequence length and mid-stream prompt switching. MOGO was published at
-AAAI 2026. This established the discrete substrate the thesis works on, and
-sharpened the control problem: a token grid is fast, but a flat grid of
-whole-body codes offers nothing to address when a user wants one hand in one
-place.
+unbounded sequence length and mid-stream prompt switching. This established the
+discrete substrate on which Chapters~4 and 5 build, and sharpened the control
+problem: a token grid is fast, but a flat grid of whole-body codes offers
+nothing to address when a user wants to place one hand at one point.
 
-The third work is the centre of the thesis, and it answers that problem with
-one representation used twice. \textbf{PartVQ} learns one codebook per
-anatomical part ($Q=6$, with the partition derived from data), so a token names
-both a moment in time and a part of the body. \textbf{T-Concat} unpacks the part
-codebooks along the sequence axis, giving every (frame, part) pair its own
-attention slot. \textbf{KV-Control}~\cite{sun2026codegeo} then feeds a target
-trajectory into a frozen masked transformer as extra key/value memory at every
-self-attention layer: 10.5M trainable parameters, with the query stream, the text
-cross-attention and every backbone weight untouched. The same codebooks also
-record which changes the decoder was trained to absorb, so they define a
-geometry in which a correction can be measured. \textbf{CodeGeo} moves the
+The third work treats an anatomy-aligned part codebook as a control surface and
+uses that one representation twice: as the sites where control enters, and as
+the geometry in which the correction is measured. \textbf{PartVQ} learns one
+codebook per anatomical part ($Q=6$, with the partition derived from data), so a
+token names both a moment in time and a part of the body. \textbf{T-Concat}
+unpacks the part codebooks along the sequence axis, giving every (frame, part)
+pair its own attention slot. \textbf{KV-Control}~\cite{sun2026codegeo} feeds a
+target trajectory into a frozen masked transformer as extra key/value memory at
+every self-attention layer, training 10.5M parameters and leaving the query
+stream, the text cross-attention and every backbone weight untouched. The same
+codebooks record which changes the decoder was trained to absorb, so they define
+a geometry in which a correction can be measured: \textbf{CodeGeo} moves the
 generated clip onto the commanded path by the smallest change that geometry
-allows, in at most eight damped analytic steps in place of the 1,600-iteration
-refinement used by prior controllers. The anisotropy of that step metric is not
-a free parameter: it must match how far the commanded anchors spread across the
-body, and joints confined to one part and joints spread over the whole body
-prefer opposite settings. On pelvis control the method tracks to 0.24\,cm at FID
-0.067 in 1/21 of the per-sample time; on multi-joint control it reaches 0.25\,cm
-at FID 0.072, against MaskControl's 0.72\,cm and 0.083~\cite{pinyoanuntapong2025maskcontrol}.
+allows, in at most eight analytic steps in place of MaskControl's
+1,600-iteration refinement~\cite{pinyoanuntapong2025maskcontrol}, with a step
+metric whose anisotropy must match how far the anchors spread across the body.
 The result that matters most for the thesis is an ablation: the same control
 interface on a channel-stacked trunk of matched quality tracks with 2.2 times
 the error. Control accuracy is a property of the representation, not of the
