@@ -143,14 +143,14 @@ Chapter 8 & Conclusion \& Future Work & --\\
   \item Synopsis of literature
   \end{enumerate}
 
-\item \textbf{Shared Conditional Representation for Text and Motion}\\
-  This chapter builds the conditioning interface used throughout the thesis.
-  A lightweight motion adapter is aligned to a frozen pretrained text encoder
-  so that captions and motions occupy one space, in which semantic edits are
-  displacement vectors and multiple conditions compose by addition. The chapter
-  also establishes the granularity limit that the rest of the thesis removes:
-  a clip-level embedding says what a motion is, not where or when any part of
-  it happens.
+\item \textbf{Shared Conditional Representation for Text and Motion}
+  \begin{enumerate}[leftmargin=1.4em]
+  \item Overview
+  \item A motion adapter aligned to a pretrained text encoder
+  \item Linear semantic editing in the shared space
+  \item Results and evaluation
+  \item Conclusion
+  \end{enumerate}
 
 \item \textbf{Hierarchical One-Pass Autoregressive Generation}
   \begin{enumerate}[leftmargin=1.4em]
@@ -216,13 +216,10 @@ represented as \emph{addressable tokens}, per body part and then per joint of
 any skeleton, and control is expressed as an operation on those tokens rather
 than as a stronger condition on a generator.
 
-The first work, MCRE~\cite{sun2024mcre}, built the conditioning interface. A
-lightweight motion adapter aligned to a frozen text
+The first work, MCRE~\cite{sun2024mcre}, built a shared conditioning space for
+text and motion. A lightweight motion adapter aligned to a frozen text
 encoder~\cite{radford2021learning} places captions and motions in one space, so
-that semantic edits become displacement vectors and conditions compose by
-addition. This is the interface every later chapter inherits. It also sets the
-limit of what it can express: one vector per clip, which says what a
-motion is but not where or when any part of it happens.
+that semantic edits correspond to linear directions in that space.
 
 The second work made generation fast and unbounded. Diffusion text-to-motion
 models~\cite{tevet2022human,chen2023executing,zhang2024motiondiffuse} sample
@@ -232,12 +229,12 @@ with a scale-adaptive residual vector
 quantizer~\cite{vandenoord2017neural,zeghidour2022soundstream} and decode every
 quantization level in a single causal forward pass, giving real-time synthesis,
 unbounded sequence length and mid-stream prompt switching. This established the
-discrete substrate on which Chapters~4 and 5 build, and sharpened the control
-problem: a token grid is fast, but a flat grid of whole-body codes offers
-nothing to address when a user wants to place one hand at one point.
+discrete substrate on which Chapters~4 and 5 build.
 
-The third work treats an anatomy-aligned part codebook as a control surface and
-uses that one representation twice: as the sites where control enters, and as
+The third work adds precise spatial control. Placing one hand at one point, or a
+root along a sketched path, calls for tokens that name individual body parts. This
+work treats an anatomy-aligned part codebook as a control surface and uses that
+one representation twice: as the sites where control enters, and as
 the geometry in which the correction is measured. \textbf{PartVQ} learns one
 codebook per anatomical part ($Q=6$, with the partition derived from data), so a
 token names both a moment in time and a part of the body. \textbf{T-Concat}
@@ -257,68 +254,47 @@ interface on a channel-stacked trunk of matched quality tracks with 2.2 times
 the error. Control accuracy is a property of the representation, not of the
 injection alone.
 
-PartVQ has since become the substrate other work in the group builds on. In
-MoGeFlow~\cite{fang2026mogeflow} the part codebooks are shown to carry
-measurable, decoder-causal kinematic geometry, which licenses generation as a
-continuous flow through codebook space rather than categorical index prediction;
-in AnchorRoute~\cite{fang2026anchorroute} the same addressable tokens carry
-sparse anchors both as generation-time conditioning and as residuals that route
-interval-local refinement.
-
-That ablation also exposes the substrate's boundary. PartVQ's partition is
-learned, but the body it partitions is fixed: HumanML3D~\cite{guo2022generating},
+Because control accuracy comes from the representation, the fourth work carries
+that representation beyond a single body. HumanML3D~\cite{guo2022generating},
 KIT-ML~\cite{plappert2016kitkit} and AMASS~\cite{mahmood2019amass} share one
-SMPL~\cite{loper2015smpl} skeleton, and every codebook is learned for that
-morphology. Games, film and virtual production are populated by characters that
-are not human, and a studio has hundreds of rigs, each with its own joint count,
-naming and helper bones. The fourth work, TopX~\cite{sun2026topx}, carries the
-addressable-token idea from one body to any body. Its token is one joint at one
-frame rather than one part at one frame; \textbf{TopX-17} converts any rigged
-animation from its kinematic tree, rest pose and motion alone, and standardizes
-every (rig, joint, channel) cell by its own statistics, so that rigs of very
-different proportions share one network input with no template, retargeting or
-inverse kinematics. The skeleton enters as a prompt --- the rig's rest pose
-leads the sequence as a clean frame and tree distances bias spatial attention
---- so nothing in the network is indexed by rig. This is the same principle as
-KV-Control, applied to a different condition: in both, what the model must obey
-is made addressable inside attention rather than baked into the architecture.
-One 0.3B-parameter flow-matching transformer serves 311 animal rigs of 34 to 102
-joints, reaching R@1 0.867 against 0.904 for real clips and FID 0.005, and an
-unseen rig is served by the same forward pass.
+SMPL~\cite{loper2015smpl} skeleton. Games, film and virtual production
+include many characters that are not human, and a studio has hundreds of rigs,
+each with its own joint count, naming and helper bones. TopX~\cite{sun2026topx} carries the
+addressable-token idea from one body to any body. Its token is one joint at one frame rather than one part at one frame.
+\textbf{TopX-17} converts any rigged animation from its kinematic tree, rest pose
+and motion alone, and standardizes every (rig, joint, channel) cell by its own
+statistics, so that rigs of very different proportions share one network input
+with no template, retargeting or inverse kinematics. The skeleton enters as a
+prompt --- the rig's rest pose leads the sequence as a clean frame and tree
+distances bias spatial attention --- so nothing in the network is indexed by rig.
+This is the same principle as KV-Control, applied to a different condition: in
+both, what the model must obey is made addressable inside attention rather than
+baked into the architecture. One 0.3B-parameter flow-matching transformer serves
+311 animal rigs of 34 to 102 joints, and an unseen rig is served by the same
+forward pass.
 
-Two limits remain. First, TopX serves rigs outside its library zero-shot, but
-bodies far from it --- a winged dragon, a many-legged spider --- still need a
-per-rig adapter trained on roughly ten clips, and the per-cell statistics that
-make a rig usable are themselves computed from that rig's motion. The same verb
-is also realized differently by a quadruped, a bird and an arthropod, and text
-following across families is not yet guaranteed. Generalizing to unseen body
-plans, with text that means the right motion on each, is the
-out-of-distribution problem the TopX line has not yet closed. Second, every model above executes one instruction. Real
-requests are ordered and composite, and concatenating independently generated
-clips leaves seams and drifting style~\cite{shafir2024priormdm,barquero2024flowmdm}.
-These two limits define the remaining period and are set out in Chapter~3.
+Two directions follow. The first extends TopX from rigs near its training library
+to body-plan families it has never seen, with text that denotes the right motion
+for each family: the same verb is realized differently by a quadruped, a bird
+and an arthropod. The second extends generation from one instruction to ordered,
+composite requests, where concatenating independently generated clips leaves
+seams and drifting style~\cite{shafir2024priormdm,barquero2024flowmdm}. Both are
+set out in Chapter~3.
 
 \section{Completed contributions}
 
 \subsection{Shared conditional representation for text and motion}
 
 Text-to-motion models must reconcile modalities that differ in dimensionality,
-length and structure. The standard approach conditions a generator on an
-embedding from an encoder that has never seen motion, which couples the two
-representations loosely and makes anything other than one-shot generation ---
-editing, interpolation, composition --- awkward to express.
+length and structure. Conditioning a generator on an embedding from an encoder
+that has never seen motion couples the two representations loosely, which makes
+editing difficult to express.
 
-This work trained a lightweight motion adapter against a frozen pretrained
+This work trained a lightweight motion adapter aligned to a frozen pretrained
 text encoder, mapping a motion and its caption to nearby points in one
-conditional space. Because the space is shared and the objective is
-contrastive, semantic relationships between captions transfer to motions:
-changing the speed, direction or affect of a movement is a displacement in the
-conditional space rather than a new prompt, and several conditions combine by
-composition in the same space.
-
-The result is the conditioning interface reused by every subsequent chapter,
-and a precise statement of what clip-level conditioning cannot do. That
-statement sets the agenda for Chapters~4 and 5.
+conditional space. In this shared space, semantic edits correspond to linear
+directions, so a motion is edited by moving its representation rather than by
+re-prompting the generator.
 
 Published at the ECCV 2024 Workshop on Foundation Models for 3D
 Humans~\cite{sun2024mcre}.
@@ -351,10 +327,7 @@ improving robustness on prompts unlike those seen in training.
 Ablations confirmed both components. Removing the decorrelation objective
 degraded generation FID and retrieval accuracy consistently across metrics.
 Varying codebook capacity showed that the configuration minimizing
-reconstruction error is not the one maximizing generation quality, which
-established that quantization error here is structured rather than uniform
-noise --- the observation that motivated moving to an anatomy-aligned
-decomposition in the next work.
+reconstruction error is not the one maximizing generation quality.
 
 The decoder was published at CVMP 2025 as Hi-RQCT~\cite{sun2025hirqct}; the full
 system was published at AAAI 2026 as MOGO~\cite{sun2025mogo}.
@@ -436,7 +409,7 @@ choices that answer these obstacles.
   with LLM2Vec, and a tree-distance bias with learned ancestor tables lets
   spatial attention tell parent from child. The flat padded-joint construction by
   which fixed-skeleton generators are usually extended trails this design by
-  0.19--0.20 of R@1 and triples FID.
+  0.19--0.20 of R@1 and multiplies FID by 3.7.
 \item \textbf{Grouped flow matching} with calibrated channel weights keeps every
   channel group's share of the gradient independent of the number of cells it
   spans; the calibration is worth 0.036--0.043 of R@1 and makes a 303M-parameter
@@ -454,45 +427,24 @@ world-space root trajectory, with no inverse-kinematics fit.
 Rigs outside the library are served by the same forward pass. On four held-out
 Truebones rigs (buffalo, gazelle, dragon and spider, the whole Truebones zoo being
 kept out of training), a low-rank adapter trained on 8--26 clips brings the
-FK--pose gap from 0.57--4.5 bone lengths to 0.23--0.35, with the largest drop on
-the two rigs farthest from the library; one adapter pooled over eight flying rigs
-removes the jitter excess on all seven scored rigs.
+FK--pose gap to 0.23--0.35 bone lengths, with the largest improvement on the two
+rigs farthest from the library.
 
 The paper is in submission to ICLR 2027~\cite{sun2026topx}.
 
 \subsection{Collaborative work}
 
-Four further motion systems were developed with colleagues in the group, each
-building on components contributed here.
+Three further motion systems were developed with colleagues in the group.
 
 \begin{itemize}
-\item \textbf{MotionDuet}~\cite{zhang2026motionduet}, published at CVPR 2026,
-  aligns motion generation with the distribution of video-derived
-  representations. Video cues from a pretrained model ground low-level dynamics
-  while text supplies semantic intent; DUET fuses video-informed cues into the
-  motion latent space, a DASH loss aligns generated trajectories with the
-  distributional and structural statistics of video features, and an
-  auto-guidance mechanism balances the two conditions using a weakened copy of
-  the model. My contribution was to the dual-conditioning design and the
-  training and evaluation of the fused model.
-
-\item \textbf{MoGeFlow}~\cite{fang2026mogeflow} shows that PartVQ's
-  group-specific codes carry measurable, non-random and decoder-causal
-  kinematic geometry, and generates by learning a text-conditioned continuous
-  flow over code embeddings rather than predicting categorical indices. It sets
-  state of the art in R-Precision on HumanML3D and KIT-ML. My contribution was
-  the PartVQ substrate it is built on and the codebook-geometry diagnostics.
-
-\item \textbf{AnchorRoute}~\cite{fang2026anchorroute} uses sparse anchors as a
-  single scaffold for both generation and refinement: anchors are injected into
-  a frozen masked diffusion prior as condition memory, and the same anchors are
-  then read as residuals whose timestamps define refinement intervals. My
-  contribution was the attention-side injection mechanism carried over from
-  KV-Control.
-
-\item \textbf{UMO}~\cite{zhan2026umo} addresses unified sparse motion modelling
-  for real-time co-speech avatars, to which I contributed on the sparse motion
-  representation.
+\item \textbf{MotionDuet}~\cite{zhang2026motionduet} (CVPR 2026) aligns
+  text-conditioned motion generation with the distribution of video-derived
+  representations through dual text--video conditioning.
+\item \textbf{MoGeFlow}~\cite{fang2026mogeflow} generates text-conditioned motion
+  as a continuous flow through motion-codebook geometry rather than by
+  categorical code prediction.
+\item \textbf{UMO}~\cite{zhan2026umo} models sparse motion in a unified framework
+  for real-time co-speech avatars.
 \end{itemize}
 
 \section{Publications}
@@ -500,8 +452,8 @@ building on components contributed here.
 \begin{itemize}
 \item \textbf{ECCV 2024 Workshop} --- \emph{MCRE: Multimodal Conditional
   Representation and Editing for Text-Motion Generation}. First author.
-  Established the joint text--motion conditional space used throughout the
-  thesis.
+  Established a joint text--motion conditional space with linear
+  semantic editing.
 
 \item \textbf{CVMP 2025} --- \emph{Hi-RQCT: Hierarchical Residual-Quantized
   Causal Transformer for High-Quality 3D Human Motion Generation}. Joint first
@@ -525,40 +477,35 @@ building on components contributed here.
   author. One model for 311 production rigs, with the skeleton as a prompt.
 
 \item \textbf{Collaborative work, 2026} ---
-  \emph{MoGeFlow}~\cite{fang2026mogeflow},
-  \emph{AnchorRoute}~\cite{fang2026anchorroute} and
+  \emph{MoGeFlow}~\cite{fang2026mogeflow} and
   \emph{UMO}~\cite{zhan2026umo}.
 \end{itemize}
 
 % =================================================================
 \chapter{Plan of Unfinished Work}
 
-Two threads remain, addressing the two limits identified at the end of
-Section~2.1: generalizing to body plans the model has never seen, with text that
-means the right motion on every family, and executing more than one
+Two threads remain, following the two directions set out at the end of
+Section~2.1: generalizing to body-plan families the model has never seen, with
+text that denotes the right motion for each, and executing more than one
 instruction.
 
 \section{Out-of-distribution generalization for topology-agnostic generation}
 
 \workitem{%
 TopX makes the skeleton an input and serves unseen rigs zero-shot and with a
-per-rig adapter. Two problems remain open, and both decide whether a
-topology-agnostic model generalizes rather than interpolates across its
-library: generating for a body the library does not contain, and making the same
-text mean the right motion on bodies from different families. This work
+per-rig adapter. The next step extends it along two axes: generating for
+body-plan families the training library does not contain, and making the same
+text denote the right motion on bodies from different families. This work
 addresses both and completes Chapter~6.}{%
 To generate faithful, text-aligned motion for rigs from body-plan families that
 are absent from training, and for unseen members of families that are present,
 with no rig-specific clips; and to make a caption such as ``runs'' or ``turns
 to look behind'' produce the motion that phrase denotes for each family, rather
 than the motion it denotes for the family that dominates the training data.}{%
-The TopX results locate both difficulties. Zero-shot error is small for rigs
-close to the library and large for bodies far from it (an FK--pose gap of 4.5
-bone lengths for a winged dragon against 0.57 for a gazelle), so generalization
-is organized by body-plan family rather than by individual rig. Text following
-fails in a matching way: the same verb is realized differently by a quadruped, a
-bird and an arthropod, and a model that ties a caption to one family's
-realization transfers that realization to the others. The hypothesis is that a
+The TopX results indicate that generalization is organized by body-plan family
+rather than by individual rig: adaptation brings the largest improvement on the
+rigs farthest from the library. Text following has the same structure, since the
+same verb is realized differently by a quadruped, a bird and an arthropod. The hypothesis is that a
 caption fixes body-plan-independent intent --- speed, heading, rhythm of contact,
 which functional group leads --- and that the skeleton prompt fixes its
 realization. Conditioning text on the functional roles of joints, which TopX
@@ -585,9 +532,8 @@ and the same separation is what lets an unseen family be served without clips.}{
 \section{Multi-subtask motion generation}
 
 \workitem{%
-Every model in the thesis executes a single instruction. This work extends the
-conditioning interface of Chapter~3 to ordered, composite instructions, and is
-the last piece required for the thesis claim of control that is both precise and
+This work extends text conditioning from one instruction to ordered, composite
+instructions, completing the thesis claim of control that is both precise and
 general.}{%
 To generate long-horizon motion from an ordered set of subtasks such that
 transitions are generated rather than stitched, style and identity persist
@@ -643,9 +589,9 @@ mid-sequence.}{%
 \gantttitlelist{1,...,9}{1}\\
 
 \ganttgroup{TopX / OOD}{1}{7}\\
-\ganttbar{OOD evaluation protocol}{1}{3}\\
-\ganttbar{Degradation diagnosis}{3}{5}\\
-\ganttbar{Specialization + replay}{4}{7}\\
+\ganttbar{Generalization protocol}{1}{3}\\
+\ganttbar{Cross-family text benchmark}{3}{5}\\
+\ganttbar{Role-conditioned text + statistics}{4}{7}\\
 \ganttmilestone{ICLR 2027 decision / resubmission}{5}\\
 
 \ganttgroup{Multi-subtask}{1}{9}\\
