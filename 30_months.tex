@@ -239,7 +239,7 @@ the geometry in which the correction is measured. \textbf{PartVQ} learns one
 codebook per anatomical part ($Q=6$, with the partition derived from data), so a
 token names both a moment in time and a part of the body. \textbf{T-Concat}
 unpacks the part codebooks along the sequence axis, giving every (frame, part)
-pair its own attention slot. \textbf{KV-Control}~\cite{sun2026codegeo} feeds a
+pair its own attention slot. \textbf{KV-Control} feeds a
 target trajectory into a frozen masked transformer as extra key/value memory at
 every self-attention layer, training 10.5M parameters and leaving the query
 stream, the text cross-attention and every backbone weight untouched. The same
@@ -331,11 +331,11 @@ system was published at AAAI 2026 as MOGO~\cite{sun2025mogo}.
 
 A text prompt gives the user no handle on placement: the generator alone decides
 where the body goes, and no amount of prompt editing pins a clip to a root path,
-a foot contact or a planner's trajectory. Learned trajectory controllers pay for
+a foot contact or a planner's trajectory. Existing trajectory controllers pay for
 this control in one of two ways. ControlNet-style adapters such as
 OmniControl~\cite{xie2024omnicontrol} and
 MaskControl~\cite{pinyoanuntapong2025maskcontrol} wire a near-duplicate backbone
-branch into the trunk, and several still rely on inference-time optimization ---
+branch into the trunk, and several also rely on inference-time optimization ---
 MaskControl on a 1,600-iteration refinement. Test-time optimization methods add
 no branch but perturb latents or noise until the targets are met, moving each
 sample away from the base model's distribution. Both costs have the same origin:
@@ -356,27 +356,26 @@ it twice.
   budget is 10.5M parameters (a shared 9M trajectory encoder and 1.5M of
   per-layer injection weights); the query stream and all backbone weights are
   frozen.
-\item \textbf{CodeGeo} finishes the control analytically. The trajectory becomes
-  anchor constraints, and each step solves a $3A\times 3A$ damped least-squares
+\item \textbf{CodeGeo} refines the generated motion analytically. The
+  trajectory becomes $A$ anchor constraints, and each step solves a
+  $3A\times 3A$ damped least-squares
   problem $(\mathbf{J}\mathbf{M}\mathbf{J}^{\top}+\lambda\mathbf{I})\,\mathbf{y}=\mathbf{r}$
   under a training-free metric $\mathbf{M}=\Sigma(\rho)$ taken from the
-  codebook's own second-order statistics. At most eight steps replace the
-  inherited 1,600-iteration refinement.
+  codebook's own second-order statistics. At most eight steps replace
+  MaskControl's 1,600-iteration refinement.
 \end{itemize}
 
 The work also establishes how the metric must be set. Its anisotropy has to
-match how far the anchor set spreads across body parts, because a scalar trust
-region can serve only rows the metric prices comparably: the value best for
-single-joint control is the one value the multi-joint sweep rules out, and the
-two tasks move in opposite directions in FID as anisotropy weakens. On pelvis
+match how far the anchor set spreads across body parts: the setting best for
+single-joint control is ruled out for multi-joint control. On pelvis
 control CodeGeo tracks to 0.24\,cm at FID 0.067 in 1/21 of the per-sample time of
 the refinement it replaces; on multi-joint control it reaches 0.25\,cm at FID
 0.072, improving on MaskControl's 0.72\,cm and 0.083 on both axes. The same
 interface on a channel-stacked trunk of matched quality tracks with 2.2 times the
-error, and the interface transfers to an RVQ and MoMask
-backbone~\cite{guo2024momask}.
+error, showing that the accuracy comes from the representation, and the
+interface transfers to an RVQ-based MoMask backbone~\cite{guo2024momask}.
 
-This work is under review at AAAI 2027~\cite{sun2026codegeo}.
+This work is under review at ICLR 2027.
 
 \subsection{Skeleton-aware text-to-motion across heterogeneous topologies}
 
@@ -467,10 +466,9 @@ Three further motion systems were developed with colleagues in the group.
 \item \textbf{CVPR 2026} --- \emph{MotionDuet: Dual-Conditioned 3D Human Motion
   Generation with Video-Regularized Text Learning}. Second author.
 
-\item \textbf{AAAI 2027, under review} --- \emph{Match the Step Metric to the
+\item \textbf{ICLR 2027, under review} --- \emph{Match the Step Metric to the
   Anchor Spread: Codebook-Geometry Correction for Trajectory-Controlled
-  Text-to-Motion}. First author. PartVQ, T-Concat, KV-Control and CodeGeo; an
-  earlier version appeared as the KV-Control preprint~\cite{sun2026kvcontrol}.
+  Text-to-Motion}. First author. PartVQ, T-Concat, KV-Control and CodeGeo.
 
 \item \textbf{ICLR 2027, under review} --- \emph{TopX: Skeleton-Aware
   In-Context Text-to-Motion Diffusion across Heterogeneous Topologies}. First
@@ -601,9 +599,9 @@ accepted paper.
 \toprule
 \textbf{Date} & \textbf{Planned work}\\
 \midrule
-September 2026 & TopX --- ICLR 2027 submission\\
+September 2026 & CodeGeo and TopX --- ICLR 2027 submissions\\
 November 2026  & Multi-subtask --- CVPR 2027 submission (optimistic)\\
-January 2027   & CodeGeo --- AAAI 2027 decision; camera-ready or resubmission\\
+January 2027   & CodeGeo and TopX --- ICLR 2027 decisions\\
 March 2027     & Multi-subtask --- ICCV 2027 submission (realistic)\\
 March 2027     & TopX extension to arbitrary skeletons --- ICCV 2027 or journal submission\\
 May 2027       & Multi-subtask --- NeurIPS 2027 submission (fallback)\\
@@ -622,8 +620,7 @@ September 2027 & Thesis submission\\
 \item \textbf{Hi-RQCT:} published, CVMP 2025.
 \item \textbf{MOGO:} published, AAAI 2026.
 \item \textbf{MotionDuet:} published, CVPR 2026.
-\item \textbf{CodeGeo (KV-Control):} under review at AAAI 2027; fallback
-  submission to CVPR 2027.
+\item \textbf{CodeGeo (KV-Control):} under review at ICLR 2027.
 \item \textbf{TopX:} under review at ICLR 2027; the extension to
   arbitrary skeletons follows as an ICCV 2027 submission or a journal
   extension.
