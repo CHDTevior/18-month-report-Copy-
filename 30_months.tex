@@ -89,9 +89,33 @@ Dr Zhiwu Huang
 % =================================================================
 \chapter{Thesis Structure}
 
-The thesis develops text-to-motion generation that is controllable at the level
-of individual joints and general across bodies and tasks. It is organized around
-five research questions, each answered by one contribution chapter:
+\section{Introduction}
+
+Motion generation produces movement for virtual characters, avatars and robots
+from high-level descriptions. Text is the most natural of these descriptions: a
+user states what a character should do, and the model produces the motion.
+Text-to-motion generation now serves animation, games, virtual production,
+telepresence and embodied agents, where motion has to be produced on demand
+rather than captured.
+
+\section{Problem definition}
+
+Given a text description, and optionally further conditions such as a target
+trajectory or a target skeleton, text-to-motion generation produces a motion
+sequence consistent with all of them. Practical use places two demands on this
+task. The first is \emph{controllability}: animators and downstream systems
+specify motion at the level of a named joint, a path or a time interval, so the
+generator must satisfy such constraints precisely, in real time and for
+sequences of any length. The second is \emph{generality}: the same generator
+should serve characters with different skeletons, and requests that combine
+several instructions.
+
+\section{Research goals}
+
+The goal of this thesis is a text-to-motion generator that is controllable at
+the level of individual joints and general across bodies and tasks. The thesis
+pursues this goal through five research questions, each answered by one
+contribution chapter:
 
 \begin{enumerate}[label=\textbf{RQ\arabic*}, leftmargin=3em]
 \item How can text and motion share one conditioning space that supports
@@ -105,6 +129,8 @@ five research questions, each answered by one contribution chapter:
 \item How can one model generate long-horizon motion from ordered, composite
   instructions? (Chapter~7)
 \end{enumerate}
+
+\section{Thesis structure}
 
 Table~\ref{tab:structure} summarizes the chapters and their status.
 Chapters~3--6 correspond to completed work that is published or under review.
